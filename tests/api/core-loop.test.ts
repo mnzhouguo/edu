@@ -9,7 +9,7 @@ describe('V1 core loop persistence and guards',()=>{
   let {db,app}=openApp(workspace);
   try{
    const versions=(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all() as {version:number}[]).map(row=>row.version);
-   expect(versions).toEqual([1,2,3,4,5,6,7,8]);
+   expect(versions).toEqual([1,2,3,4,5,6,7,8,9,10]);
    const studentId=await createStudent(app);
    const task=await generateTask(app,studentId);
    await request(app).post(`/api/students/${studentId}/daily-tasks/${task.id}/submit`).attach('photos',tinyPng,'练习.png').expect(201);
@@ -50,3 +50,5 @@ describe('V1 core loop persistence and guards',()=>{
   }finally{db.close();rmSync(workspace.directory,{recursive:true,force:true})}
  });
 });
+
+

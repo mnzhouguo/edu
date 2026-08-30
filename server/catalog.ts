@@ -1,7 +1,7 @@
 import type { Subject } from './plans.js';
 
 export type AreaDef={id:string;label:string};
-export const knowledgeAreaCatalog:Record<Subject,AreaDef[]>={
+export const knowledgeAreaCatalog:Record<string,AreaDef[]>={
  chinese:[{id:'basics',label:'基础知识'},{id:'poetry_recitation',label:'古诗词默写'},{id:'classical_in_class',label:'课内文言文'},{id:'modern_reading',label:'现代文阅读'},{id:'composition',label:'作文'}],
  math:[{id:'lesson_review',label:'课内知识复习'},{id:'basic_drills',label:'基础题'},{id:'mid_drills',label:'中档题'},{id:'mistake_redo',label:'错题重做'},{id:'topic_training',label:'专题训练'}],
  english:[{id:'vocabulary',label:'单词短语'},{id:'sentence_patterns',label:'课文句型'},{id:'reading',label:'阅读理解'},{id:'cloze',label:'完形填空'},{id:'listening',label:'听力'},{id:'writing_sentences',label:'作文句子'}],
@@ -15,11 +15,11 @@ export const DEFAULT_BASE_POINTS=10;
 export const DEFAULT_COMPLETION='按要求完成练习，并订正错题';
 
 export function areaLabel(subject:Subject,areaId:string){
- return knowledgeAreaCatalog[subject].find(area=>area.id===areaId)?.label??areaId;
+ return (knowledgeAreaCatalog[subject]??[{id:'general',label:'综合学习'}]).find(area=>area.id===areaId)?.label??areaId;
 }
 
 export function isAreaId(subject:Subject,areaId:string){
- return knowledgeAreaCatalog[subject].some(area=>area.id===areaId);
+ return (knowledgeAreaCatalog[subject]??[{id:'general',label:'综合学习'}]).some(area=>area.id===areaId);
 }
 
 /** Deterministic weekday slots: prefer Mon–Fri, then Sat/Sun when n>5. */
@@ -37,3 +37,4 @@ export function weekdaySlots(sessions:number){
  for(let i=0;i<sessions-5;i++)slots.push(weekend[i%2]);
  return slots.slice(0,sessions);
 }
+

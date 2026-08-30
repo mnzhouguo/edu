@@ -1,0 +1,31 @@
+.rubric-preview{display:grid;gap:8px}
+.rubric-dimension-chip{background:#f4f8f6;border:1px solid #d9e6e1;border-radius:6px;padding:8px 10px}
+.rubric-dimension-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.rubric-dimension-head strong{font-size:12px;color:#1f3d36}
+.rubric-dimension-head em{font-style:normal;font-size:11px;font-weight:800;color:#17685d;background:#e5f2ee;border-radius:999px;padding:2px 8px}
+.rubric-levels{display:flex;flex-wrap:wrap;gap:6px}
+.rubric-levels span{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#4f6069;background:#fff;border:1px solid #e1e8e5;border-radius:4px;padding:3px 7px}
+.rubric-levels b{color:#17685d;font-size:12px}
+.rubric-cell{padding-top:10px!important;padding-bottom:10px!important;vertical-align:top;height:auto!important}
+.side-drawer.rubric-drawer{width:min(560px,100%)}
+.rubric-editor{display:grid;gap:12px;padding:14px;border:1px solid #dce6e2;border-radius:8px;background:#f7faf8}
+.rubric-editor-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.rubric-editor-head strong{display:block;font-size:14px;color:#17332d}
+.rubric-editor-head p{margin:4px 0 0;font-size:12px;color:#718089;line-height:1.5;font-weight:400;max-width:320px}
+.rubric-budget{font-size:12px;color:#4f6069;padding:8px 10px;border-radius:6px;background:#eef3f1}
+.rubric-budget.exact{background:#e5f2ee;color:#17685d}
+.rubric-budget.over{background:#faeded;color:#9f2f2f}
+.rubric-budget.under{background:#fff7e8;color:#8a6419}
+.rubric-dimension-card{background:#fff;border:1px solid #e1e7ea;border-radius:7px;padding:12px;display:grid;gap:10px}
+.rubric-dimension-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 84px 36px;gap:8px;align-items:end}
+.rubric-field{display:grid;gap:5px;min-width:0}
+.rubric-field span{font-size:12px;font-weight:700;color:#4e5e67}
+.rubric-field input,.rubric-level-row input{width:100%;height:36px;border:1px solid #cfd9de;border-radius:5px;padding:0 9px;color:#17202a;background:#fff;box-sizing:border-box}
+.rubric-field input:focus,.rubric-level-row input:focus{outline:none;border-color:#1f6f63;box-shadow:0 0 0 3px rgba(31,111,99,.11)}
+.rubric-level-list{display:grid;gap:7px}
+.rubric-level-head,.rubric-level-row{display:grid;grid-template-columns:minmax(0,1fr) 64px 34px;gap:7px;align-items:center}
+.rubric-level-head span{font-size:11px;font-weight:700;color:#80909a}
+.rubric-level-row .icon-button{width:34px;height:34px}
+.rubric-dimension-toolbar .icon-button{width:36px;height:36px;margin-bottom:0}
+.rubric-editor .text-button{justify-content:flex-start;padding:4px 0;color:#17685d}
+.rubric-editor .form-error{margin:0}

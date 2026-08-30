@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { areaLabel,DEFAULT_BASE_POINTS,DEFAULT_COMPLETION,DEFAULT_DURATION,DEFAULT_SESSIONS,isAreaId,knowledgeAreaCatalog,weekdaySlots } from './catalog.js';
-import { createWeeklyTask,listWeeklyTasks,subjects,type Subject } from './plans.js';
+import { createWeeklyTask,listWeeklyTasks,type Subject } from './plans.js';
+import { listStudentSubjects } from './subjects.js';
 import { isMonday } from './dates.js';
 
 export type SubjectGoal={narrative:string;currentScore:number|null;targetScore:number|null;targetDate:string|null};
@@ -27,7 +28,7 @@ export function getSubjectPlan(db:DatabaseSync,studentId:number,subject:Subject)
  const row=db.prepare('SELECT * FROM subject_plans WHERE student_id=? AND subject=?').get(studentId,subject) as Record<string,unknown>;
  const settings=db.prepare('SELECT * FROM knowledge_area_settings WHERE student_id=? AND subject=?').all(studentId,subject) as Array<Record<string,unknown>>;
  const byId=new Map(settings.map(item=>[String(item.area_id),item]));
- const areas=knowledgeAreaCatalog[subject].map((def,index)=>{
+ const areas=(knowledgeAreaCatalog[subject]??[{id:'general',label:'综合学习'}]).map((def,index)=>{
   const saved=byId.get(def.id);
   return {
    id:def.id,label:def.label,
@@ -105,13 +106,21 @@ export function createMaterial(db:DatabaseSync,studentId:number,subject:Subject,
  return mapMaterial(db.prepare('SELECT * FROM study_materials WHERE id=?').get(Number(result.lastInsertRowid)) as Record<string,unknown>);
 }
 
+export function updateMaterial(db:DatabaseSync,studentId:number,id:number,areaId:string,input:MaterialInput){
+ const existing=db.prepare('SELECT * FROM study_materials WHERE id=? AND student_id=?').get(id,studentId) as Record<string,unknown>|undefined;
+ if(!existing)return null;
+ const subject=String(existing.subject) as Subject;
+ if(!isAreaId(subject,areaId))return null;
+ db.prepare('UPDATE study_materials SET area_id=?,name=?,material_type=?,note=? WHERE id=? AND student_id=?').run(areaId,input.name,input.type,input.note,id,studentId);
+ return mapMaterial(db.prepare('SELECT * FROM study_materials WHERE id=?').get(id) as Record<string,unknown>);
+}
 export function deleteMaterial(db:DatabaseSync,studentId:number,id:number){
  return Boolean(db.prepare('DELETE FROM study_materials WHERE id=? AND student_id=?').run(id,studentId).changes);
 }
 
 export function generateFromSubjectPlans(db:DatabaseSync,studentId:number,weekStart:string){
  if(!isMonday(weekStart))return null;
- for(const subject of subjects){
+ for(const {id:subject} of listStudentSubjects(db,studentId)){
   const plan=getSubjectPlan(db,studentId,subject);
   for(const area of plan.areas.filter(item=>item.enabled)){
    const sourced=listWeeklyTasks(db,studentId,weekStart).filter(task=>task.subject===subject&&task.sourceKnowledgeArea===area.id);
@@ -141,3 +150,5 @@ export function generateFromSubjectPlans(db:DatabaseSync,studentId:number,weekSt
  }
  return listWeeklyTasks(db,studentId,weekStart);
 }
+
+

@@ -25,8 +25,20 @@ A specific learning activity assigned to the student for a date and subject, wit
 _Avoid_: Homework, assignment
 
 **Completion Standard**:
-The measurable condition that tells the parent whether a study task was actually completed, such as quantity, accuracy, time limit, recitation result, or correction requirement.
+The measurable condition that tells the parent whether a study task was actually completed. Prefer an Evaluation Rubric of dimensions and levels; a plain-text summary may still travel with generated Study Tasks.
 _Avoid_: Requirement, acceptance criteria
+
+**Evaluation Rubric**:
+The scored breakdown of a Completion Standard: one or more Evaluation Dimensions whose max points sum to at most the item's base Points, used later to award earned Points.
+_Avoid_: Grading form, checklist, scoring sheet
+
+**Evaluation Dimension**:
+One scored aspect inside an Evaluation Rubric, such as handwriting or accuracy, with its own max points and Rubric Levels.
+_Avoid_: Criterion group, category, metric
+
+**Rubric Level**:
+A selectable quality band inside an Evaluation Dimension, carrying a point value at or below that dimension's max, such as “字迹优美 / 5分”.
+_Avoid_: Grade option, score choice, rating star
 
 **Accuracy Band**:
 An approximate correctness level selected during evaluation, such as 60%, 80%, or 90%, rather than an exact automatically calculated rate.
@@ -72,6 +84,17 @@ _Avoid_: Priority, weight, difficulty
 A parent-maintained named resource attached to a Knowledge Area, such as a workbook, course, or handout title. Name is required; type and note are optional. It is planning context for generated tasks, not Photo Evidence and not an auto-fetched web library.
 _Avoid_: Photo Evidence, resource library, attachment, link dump
 
+**Material Planning Matrix**:
+A subject weekly-planning view whose columns are enabled Study Materials and whose rows are weekdays. Each cell contains zero or more Study Tasks linked to that material, and each row shows the automatically calculated subject duration total. The first product use is Chinese.
+_Avoid_: Spreadsheet, timetable, knowledge-area grid
+
+**Material Weekly Template**:
+A reusable seven-day pattern owned by one Study Material. Its entries define the default weekday tasks, Completion Standards, Suggested Durations, Base Points, and within-cell order used when creating a Weekly Plan.
+_Avoid_: Weekly Plan, Task Template, recurring calendar event
+
+**Material Deactivation**:
+Removing a Study Material from future planning without deleting its historical Study Tasks. A material with no historical tasks may be deleted; a referenced material must be deactivated.
+_Avoid_: Material deletion, archive task
 **Subject Plan Generation**:
 The explicit parent action that creates missing Weekly Plan Study Tasks from enabled Knowledge Areas for a chosen week. It fills gaps only: existing tasks from an area are kept, parent edits are not overwritten, and hand-added temporary tasks are left alone. It does not write Daily Plan rows directly.
 _Avoid_: Auto-sync, silent rewrite, daily generation
@@ -206,5 +229,6 @@ _Avoid_: Purchase, order
 **Exam Result**:
 A recorded school test result for one or more subjects, used to observe score trends over time.
 _Avoid_: Report card
+
 
 

@@ -9,6 +9,17 @@ describe('Subject Plan and Subject Plan Generation',()=>{
  beforeEach(async()=>{workspace=tempWorkspace();({db,app}=openApp(workspace));studentId=await createStudent(app)});
  afterEach(()=>{db.close();rmSync(workspace.directory,{recursive:true,force:true})});
 
+ it('adds a custom student subject with a general study area and generates its plan items',async()=>{
+  const custom=(await request(app).post(`/api/students/${studentId}/subjects`).send({label:'化学'}).expect(201)).body.subject;
+  expect(custom).toMatchObject({label:'化学',custom:true});
+  const subjects=(await request(app).get(`/api/students/${studentId}/subjects`).expect(200)).body.subjects;
+  expect(subjects.map((item:{label:string})=>item.label)).toContain('化学');
+  const plan=(await request(app).get(`/api/students/${studentId}/subject-plans/${encodeURIComponent(custom.id)}`).expect(200)).body.plan;
+  expect(plan.areas).toEqual([expect.objectContaining({id:'general',label:'综合学习'})]);
+  const item=(await request(app).post(`/api/students/${studentId}/subject-plans/${encodeURIComponent(custom.id)}/items`).send({name:'化学方程式',cadence:'weekly',weekdays:[6],materialId:null,suggestedDuration:30,completionStandard:'完成方程式练习并订正',basePoints:10,active:true,sortOrder:1}).expect(201)).body.item;
+  const tasks=(await request(app).post(`/api/students/${studentId}/subject-plans/generate`).send({weekStart:'2026-08-31'}).expect(200)).body.tasks;
+  expect(tasks.find((task:{sourceKnowledgeArea:string})=>task.sourceKnowledgeArea===`plan_item:${item.id}`)).toMatchObject({subject:custom.id,content:'化学方程式'});
+ });
  it('rejects an empty Subject Goal narrative',async()=>{
   await request(app).put(`/api/students/${studentId}/subject-plans/english`).send({goal:{narrative:'  '},areas:[]}).expect(400);
  });
@@ -27,6 +38,8 @@ describe('Subject Plan and Subject Plan Generation',()=>{
 
   const material=(await request(app).post(`/api/students/${studentId}/subject-plans/english/areas/vocabulary/materials`).send({name:'中考词汇手册',type:'workbook',note:'每天20个'}).expect(201)).body.material;
   expect(material).toMatchObject({name:'中考词汇手册',type:'workbook'});
+  const updatedMaterial=(await request(app).put(`/api/students/${studentId}/subject-plans/materials/${material.id}`).send({name:'新版中考词汇手册',type:'handout',note:'每天30个',areaId:'reading'}).expect(200)).body.material;
+  expect(updatedMaterial).toMatchObject({name:'新版中考词汇手册',type:'handout',note:'每天30个',areaId:'reading'});
 
   db.close();
   ({db,app}=openApp(workspace));
@@ -34,7 +47,9 @@ describe('Subject Plan and Subject Plan Generation',()=>{
   expect(saved.goal).toMatchObject({narrative:'英语从95提到110',currentScore:95,targetScore:110,targetDate:'2026-12-31'});
   const vocabulary=saved.areas.find((area:{id:string})=>area.id==='vocabulary');
   expect(vocabulary).toMatchObject({enabled:true,sessionsPerWeek:5,suggestedDuration:15});
-  expect(vocabulary.materials[0].name).toBe('中考词汇手册');
+  const reading=saved.areas.find((area:{id:string})=>area.id==='reading');
+  expect(vocabulary.materials).toHaveLength(0);
+  expect(reading.materials[0].name).toBe('新版中考词汇手册');
  });
 
  it('generates missing Weekly Plan tasks from enabled areas and gap-fills without overwriting',async()=>{
@@ -97,4 +112,30 @@ describe('Subject Plan and Subject Plan Generation',()=>{
   expect(generated.body.tasks.filter((task:{sourceKnowledgeArea:string|null})=>task.sourceKnowledgeArea==='composition')).toHaveLength(2);
   expect(generated.body.tasks.filter((task:{sourceKnowledgeArea:string|null})=>task.sourceKnowledgeArea==='basics')).toHaveLength(1);
  });
+
+ it('stores recurring subject plan items and generates their weekly occurrences without duplicates',async()=>{
+  const daily=(await request(app).post(`/api/students/${studentId}/subject-plans/chinese/items`).send({name:'学校作业',cadence:'weekdays',weekdays:[],materialId:null,suggestedDuration:30,completionStandard:'完成并订正',basePoints:10,active:true,sortOrder:1}).expect(201)).body.item;
+  const alternate=(await request(app).post(`/api/students/${studentId}/subject-plans/chinese/items`).send({name:'一本阅读',cadence:'every_2_days',weekdays:[],materialId:null,suggestedDuration:20,completionStandard:'完成1篇并记录正确率',basePoints:8,active:true,sortOrder:2}).expect(201)).body.item;
+  const weekly=(await request(app).post(`/api/students/${studentId}/subject-plans/chinese/items`).send({name:'必读书目',cadence:'weekly',weekdays:[6],materialId:null,suggestedDuration:40,completionStandard:'完成本周阅读页数',basePoints:12,active:true,sortOrder:3}).expect(201)).body.item;
+  expect((await request(app).get(`/api/students/${studentId}/subject-plans/chinese/items`).expect(200)).body.items.map((item:{name:string})=>item.name)).toEqual(['学校作业','一本阅读','必读书目']);
+  const first=(await request(app).post(`/api/students/${studentId}/subject-plans/generate`).send({weekStart:'2026-08-31'}).expect(200)).body.tasks;
+  expect(first.filter((task:{sourceKnowledgeArea:string})=>task.sourceKnowledgeArea===`plan_item:${daily.id}`)).toHaveLength(5);
+  expect(first.filter((task:{sourceKnowledgeArea:string})=>task.sourceKnowledgeArea===`plan_item:${alternate.id}`).map((task:{weekday:number})=>task.weekday)).toEqual([1,3,5,7]);
+  expect(first.filter((task:{sourceKnowledgeArea:string})=>task.sourceKnowledgeArea===`plan_item:${weekly.id}`).map((task:{weekday:number})=>task.weekday)).toEqual([6]);
+  const second=(await request(app).post(`/api/students/${studentId}/subject-plans/generate`).send({weekStart:'2026-08-31'}).expect(200)).body.tasks;
+  expect(second.filter((task:{sourceKnowledgeArea:string})=>task.sourceKnowledgeArea.startsWith('plan_item:'))).toHaveLength(10);
+ });
+
+ it('stores evaluation rubrics for plan items and rejects dimensions over the total points',async()=>{
+  const rubric={dimensions:[{id:'handwriting',name:'字迹',maxPoints:5,levels:[{id:'good',label:'字迹优美',points:5},{id:'ok',label:'不够工整',points:3},{id:'bad',label:'非常潦草',points:0}]},{id:'accuracy',name:'正确率',maxPoints:5,levels:[{id:'high',label:'正确率高',points:5},{id:'mid',label:'基本达标',points:3},{id:'low',label:'未达标',points:0}]}]};
+  const created=(await request(app).post(`/api/students/${studentId}/subject-plans/chinese/items`).send({name:'作文誊写',cadence:'weekly',weekdays:[6],materialId:null,suggestedDuration:40,evaluationRubric:rubric,basePoints:10,active:true,sortOrder:1}).expect(201)).body.item;
+  expect(created.evaluationRubric).toEqual(rubric);
+  expect(created.completionStandard).toContain('字迹（5分）');
+  expect(created.basePoints).toBe(10);
+  await request(app).post(`/api/students/${studentId}/subject-plans/chinese/items`).send({name:'超分事项',cadence:'daily',weekdays:[],materialId:null,suggestedDuration:20,evaluationRubric:{dimensions:[{id:'a',name:'字迹',maxPoints:8,levels:[{id:'full',label:'优美',points:8},{id:'zero',label:'潦草',points:0}]}]},basePoints:5,active:true,sortOrder:2}).expect(400);
+ });
 });
+
+
+
+
