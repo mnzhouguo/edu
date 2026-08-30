@@ -12,7 +12,8 @@
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "dev:e2e": "node scripts/prepare-e2e.mjs && cross-env DATABASE_PATH=test-results/e2e.sqlite npm run dev"
   },
   "repository": {
     "type": "git",
@@ -41,6 +42,7 @@
     "@types/supertest": "^7.2.1",
     "@vitejs/plugin-react": "^6.1.1",
     "concurrently": "^10.0.5",
+    "cross-env": "^10.1.0",
     "eslint": "^10.9.1",
     "globals": "^17.11.0",
     "playwright": "^1.62.1",
