@@ -1,6 +1,9 @@
 export type Student={id:number;name:string;grade:string;school:string;currentGoal:string};
 export type Subject='chinese'|'math'|'english'|'physics'|'history';
-export type WeeklyTask={id:number;studentId:number;weekStart:string;weekday:number;subject:Subject;content:string;completionStandard:string;suggestedDuration:number;basePoints:number;taskOrder:number};
+export type WeeklyTask={id:number;studentId:number;weekStart:string;weekday:number;subject:Subject;content:string;completionStandard:string;suggestedDuration:number;basePoints:number;taskOrder:number;sourceKnowledgeArea:string|null};
+export type StudyMaterial={id:number;name:string;type:string;note:string;areaId:string};
+export type KnowledgeAreaState={id:string;label:string;enabled:boolean;sortOrder:number;sessionsPerWeek:number;suggestedDuration:number;materials:StudyMaterial[]};
+export type SubjectPlan={subject:Subject;goal:{narrative:string;currentScore:number|null;targetScore:number|null;targetDate:string|null};areas:KnowledgeAreaState[]};
 export type Photo={id:number;relativePath:string;mediaType:string;originalFilename:string;size:number};
 export type Submission={id:number;submittedAt:string;note:string;photos:Photo[]};
 export type Evaluation={id:number;completion:string;accuracyBand:string;tags:string[];note:string;earnedPoints:number;confirmed:boolean};

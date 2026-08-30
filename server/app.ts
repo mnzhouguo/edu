@@ -12,6 +12,7 @@ import { createWeeklyTask,deleteWeeklyTask,generateDailyPlan,getDailyTask,listDa
 import { presentDailyTask,presentDailyTasks } from './present.js';
 import { createMistake,deleteMistake,listMistakes,parseMistake,updateMistake } from './mistakes.js';
 import { createRedemption,createReward,decideRedemption,listRedemptions,listRewards,parseReward,updateReward } from './rewards.js';
+import { createMaterial,deleteMaterial,generateFromSubjectPlans,getSubjectPlan,parseMaterial,parseSubjectPlanUpdate,updateSubjectPlan } from './subject-plans.js';
 import { submitDailyTask } from './submissions.js';
 
 export type AppOptions={photoLibrary?:string;maxPhotoBytes?:number};
@@ -37,6 +38,37 @@ export function createApp(db:DatabaseSync,options:AppOptions={}){
  app.post('/api/students/:id/daily-plan/generate',(req,res)=>{const date=String(req.body?.date??'');if(!parseIsoDate(date))return res.status(400).json({message:'日期无效'});return res.json({tasks:presentDailyTasks(db,generateDailyPlan(db,Number(req.params.id),date)??[])})});
  app.get('/api/students/:id/daily-tasks',(req,res)=>{const date=String(req.query.date??''),subject=req.query.subject?String(req.query.subject):undefined;return parseIsoDate(date)?res.json({tasks:presentDailyTasks(db,listDailyTasks(db,Number(req.params.id),date,subject))}):res.status(400).json({message:'日期无效'})});
  app.put('/api/daily-tasks/order',(req,res)=>{const studentId=Number(req.body?.studentId),date=String(req.body?.date??''),orderedIds=Array.isArray(req.body?.orderedIds)?req.body.orderedIds.map(Number):[];if(!parseIsoDate(date))return res.status(400).json({message:'日期无效'});const tasks=reorderDailyTasks(db,studentId,date,orderedIds);return tasks?res.json({tasks:presentDailyTasks(db,tasks)}):res.status(400).json({message:'任务排序数据无效'})});
+ app.get('/api/students/:id/subject-plans/:subject',(req,res)=>{
+  const subject=String(req.params.subject);
+  if(!subjects.includes(subject as typeof subjects[number]))return res.status(400).json({message:'科目无效'});
+  if(!getStudent(db,Number(req.params.id)))return res.status(404).json({message:'没有找到孩子档案'});
+  return res.json({plan:getSubjectPlan(db,Number(req.params.id),subject as typeof subjects[number])});
+ });
+ app.put('/api/students/:id/subject-plans/:subject',(req,res)=>{
+  const subject=String(req.params.subject);
+  if(!subjects.includes(subject as typeof subjects[number]))return res.status(400).json({message:'科目无效'});
+  if(!getStudent(db,Number(req.params.id)))return res.status(404).json({message:'没有找到孩子档案'});
+  const input=parseSubjectPlanUpdate(req.body,subject as typeof subjects[number]);
+  if(!input)return res.status(400).json({message:'请完整填写科目规划'});
+  return res.json({plan:updateSubjectPlan(db,Number(req.params.id),subject as typeof subjects[number],input)});
+ });
+ app.post('/api/students/:id/subject-plans/:subject/areas/:areaId/materials',(req,res)=>{
+  const subject=String(req.params.subject);
+  if(!subjects.includes(subject as typeof subjects[number]))return res.status(400).json({message:'科目无效'});
+  const input=parseMaterial(req.body);
+  if(!input)return res.status(400).json({message:'请填写资料名称'});
+  const material=createMaterial(db,Number(req.params.id),subject as typeof subjects[number],String(req.params.areaId),input);
+  return material?res.status(201).json({material}):res.status(400).json({message:'知识模块无效'});
+ });
+ app.delete('/api/students/:studentId/subject-plans/materials/:id',(req,res)=>{
+  return deleteMaterial(db,Number(req.params.studentId),Number(req.params.id))?res.status(204).send():res.status(404).json({message:'没有找到学习资料'});
+ });
+ app.post('/api/students/:id/subject-plans/generate',(req,res)=>{
+  const weekStart=String(req.body?.weekStart??'');
+  if(!getStudent(db,Number(req.params.id)))return res.status(404).json({message:'没有找到孩子档案'});
+  const tasks=generateFromSubjectPlans(db,Number(req.params.id),weekStart);
+  return tasks?res.json({tasks}):res.status(400).json({message:'周开始日期必须是有效的周一'});
+ });
  app.post('/api/students/:studentId/daily-tasks/:id/submit',upload.array('photos',8),(req,res)=>{
   const studentId=Number(req.params.studentId);
   const result=submitDailyTask(db,photoLibrary,maxPhotoBytes,studentId,Number(req.params.id),String(req.body?.note??''),uploaded(req.files as Express.Multer.File[]|undefined));

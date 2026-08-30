@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "dev:e2e": "node scripts/prepare-e2e.mjs && cross-env PORT=3011 WEB_PORT=5174 DATABASE_PATH=test-results/e2e.sqlite PHOTO_LIBRARY=test-results/e2e-photos npm run dev"
+    "dev:e2e": "node scripts/prepare-e2e.mjs && cross-env PORT=3012 WEB_PORT=5175 DATABASE_PATH=test-results/e2e.sqlite PHOTO_LIBRARY=test-results/e2e-photos npm run dev"
   },
   "repository": {
     "type": "git",

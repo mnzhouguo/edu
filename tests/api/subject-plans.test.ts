@@ -1,0 +1,100 @@
+import { rmSync } from 'node:fs';
+import request from 'supertest';
+import { afterEach,beforeEach,describe,expect,it } from 'vitest';
+import type { DatabaseSync } from 'node:sqlite';
+import { createStudent,openApp,tempWorkspace } from './helpers.js';
+
+describe('Subject Plan and Subject Plan Generation',()=>{
+ let db:DatabaseSync;let app:ReturnType<typeof openApp>['app'];let workspace:ReturnType<typeof tempWorkspace>;let studentId:number;
+ beforeEach(async()=>{workspace=tempWorkspace();({db,app}=openApp(workspace));studentId=await createStudent(app)});
+ afterEach(()=>{db.close();rmSync(workspace.directory,{recursive:true,force:true})});
+
+ it('rejects an empty Subject Goal narrative',async()=>{
+  await request(app).put(`/api/students/${studentId}/subject-plans/english`).send({goal:{narrative:'  '},areas:[]}).expect(400);
+ });
+
+ it('returns the fixed Knowledge Area catalog with defaults and persists goal, enable, intensity, and materials',async()=>{
+  const plan=(await request(app).get(`/api/students/${studentId}/subject-plans/english`).expect(200)).body.plan;
+  expect(plan.subject).toBe('english');
+  expect(plan.goal).toMatchObject({narrative:'',currentScore:null,targetScore:null,targetDate:null});
+  expect(plan.areas.map((area:{id:string})=>area.id)).toEqual(['vocabulary','sentence_patterns','reading','cloze','listening','writing_sentences']);
+  expect(plan.areas[0]).toMatchObject({enabled:false,sessionsPerWeek:3,suggestedDuration:20,materials:[]});
+
+  await request(app).put(`/api/students/${studentId}/subject-plans/english`).send({
+   goal:{narrative:'英语从95提到110',currentScore:95,targetScore:110,targetDate:'2026-12-31'},
+   areas:[{id:'vocabulary',enabled:true,sortOrder:1,sessionsPerWeek:5,suggestedDuration:15},{id:'reading',enabled:true,sortOrder:2,sessionsPerWeek:3,suggestedDuration:25}]
+  }).expect(200);
+
+  const material=(await request(app).post(`/api/students/${studentId}/subject-plans/english/areas/vocabulary/materials`).send({name:'中考词汇手册',type:'workbook',note:'每天20个'}).expect(201)).body.material;
+  expect(material).toMatchObject({name:'中考词汇手册',type:'workbook'});
+
+  db.close();
+  ({db,app}=openApp(workspace));
+  const saved=(await request(app).get(`/api/students/${studentId}/subject-plans/english`).expect(200)).body.plan;
+  expect(saved.goal).toMatchObject({narrative:'英语从95提到110',currentScore:95,targetScore:110,targetDate:'2026-12-31'});
+  const vocabulary=saved.areas.find((area:{id:string})=>area.id==='vocabulary');
+  expect(vocabulary).toMatchObject({enabled:true,sessionsPerWeek:5,suggestedDuration:15});
+  expect(vocabulary.materials[0].name).toBe('中考词汇手册');
+ });
+
+ it('generates missing Weekly Plan tasks from enabled areas and gap-fills without overwriting',async()=>{
+  await request(app).put(`/api/students/${studentId}/subject-plans/english`).send({
+   goal:{narrative:'提分'},
+   areas:[{id:'vocabulary',enabled:true,sortOrder:1,sessionsPerWeek:5,suggestedDuration:15}]
+  }).expect(200);
+  await request(app).post(`/api/students/${studentId}/subject-plans/english/areas/vocabulary/materials`).send({name:'词汇手册',type:'workbook'}).expect(201);
+
+  const first=await request(app).post(`/api/students/${studentId}/subject-plans/generate`).send({weekStart:'2026-08-24'}).expect(200);
+  const sourced=first.body.tasks.filter((task:{sourceKnowledgeArea:string|null})=>task.sourceKnowledgeArea==='vocabulary');
+  expect(sourced).toHaveLength(5);
+  expect(sourced.every((task:{weekday:number})=>task.weekday>=1&&task.weekday<=5)).toBe(true);
+  expect(sourced[0]).toMatchObject({subject:'english',suggestedDuration:15,basePoints:10,sourceKnowledgeArea:'vocabulary'});
+  expect(sourced[0].content).toContain('词汇手册');
+
+  await request(app).post(`/api/students/${studentId}/weekly-tasks`).send({
+   weekStart:'2026-08-24',weekday:1,subject:'english',content:'学校临时听写',completionStandard:'完成听写',suggestedDuration:10,basePoints:5,taskOrder:99
+  }).expect(201);
+
+  const editedId=sourced[0].id;
+  await request(app).put(`/api/students/${studentId}/weekly-tasks/${editedId}`).send({
+   weekStart:'2026-08-24',weekday:sourced[0].weekday,subject:'english',content:'已手改的单词任务',completionStandard:sourced[0].completionStandard,suggestedDuration:15,basePoints:10,taskOrder:sourced[0].taskOrder
+  }).expect(200);
+
+  const second=await request(app).post(`/api/students/${studentId}/subject-plans/generate`).send({weekStart:'2026-08-24'}).expect(200);
+  const again=second.body.tasks.filter((task:{sourceKnowledgeArea:string|null})=>task.sourceKnowledgeArea==='vocabulary');
+  expect(again).toHaveLength(5);
+  expect(again.find((task:{id:number})=>task.id===editedId).content).toBe('已手改的单词任务');
+  expect(second.body.tasks.some((task:{content:string})=>task.content==='学校临时听写')).toBe(true);
+ });
+
+ it('does not write Daily Plan rows and keeps two students isolated',async()=>{
+  await request(app).put(`/api/students/${studentId}/subject-plans/math`).send({
+   goal:{narrative:'数学稳90'},
+   areas:[{id:'basic_drills',enabled:true,sortOrder:1,sessionsPerWeek:2,suggestedDuration:20}]
+  }).expect(200);
+  await request(app).post(`/api/students/${studentId}/subject-plans/generate`).send({weekStart:'2026-08-24'}).expect(200);
+  expect((await request(app).get(`/api/students/${studentId}/daily-tasks?date=2026-08-24`).expect(200)).body.tasks).toHaveLength(0);
+  const daily=(await request(app).post(`/api/students/${studentId}/daily-plan/generate`).send({date:'2026-08-24'}).expect(200)).body.tasks;
+  expect(daily.length).toBeGreaterThan(0);
+
+  const other=await createStudent(app,'弟弟');
+  const otherPlan=(await request(app).get(`/api/students/${other}/subject-plans/math`).expect(200)).body.plan;
+  expect(otherPlan.areas.find((area:{id:string})=>area.id==='basic_drills').enabled).toBe(false);
+  expect((await request(app).get(`/api/students/${other}/weekly-tasks?weekStart=2026-08-24`).expect(200)).body.tasks).toHaveLength(0);
+ });
+
+ it('skips disabled areas on the next generation',async()=>{
+  await request(app).put(`/api/students/${studentId}/subject-plans/chinese`).send({
+   goal:{narrative:'语文'},
+   areas:[{id:'composition',enabled:true,sortOrder:1,sessionsPerWeek:2,suggestedDuration:30}]
+  }).expect(200);
+  await request(app).post(`/api/students/${studentId}/subject-plans/generate`).send({weekStart:'2026-08-24'}).expect(200);
+  await request(app).put(`/api/students/${studentId}/subject-plans/chinese`).send({
+   goal:{narrative:'语文'},
+   areas:[{id:'composition',enabled:false,sortOrder:1,sessionsPerWeek:2,suggestedDuration:30},{id:'basics',enabled:true,sortOrder:1,sessionsPerWeek:1,suggestedDuration:15}]
+  }).expect(200);
+  const generated=await request(app).post(`/api/students/${studentId}/subject-plans/generate`).send({weekStart:'2026-08-24'}).expect(200);
+  expect(generated.body.tasks.filter((task:{sourceKnowledgeArea:string|null})=>task.sourceKnowledgeArea==='composition')).toHaveLength(2);
+  expect(generated.body.tasks.filter((task:{sourceKnowledgeArea:string|null})=>task.sourceKnowledgeArea==='basics')).toHaveLength(1);
+ });
+});

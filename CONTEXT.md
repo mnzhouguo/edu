@@ -52,8 +52,32 @@ _Avoid_: Attachment, picture
 The local folder where uploaded study task photos and mistake photos are stored, while the database keeps their paths and metadata.
 _Avoid_: Image database, gallery
 
+**Subject Plan**:
+The long-lived, per-subject score-improvement breakdown for one student: which Knowledge Areas are active, their order and intensity, linked Study Materials, and the Subject Goal. Weekly and daily Study Tasks are generated from it; it is not a calendar week and not a time-bounded exam sprint.
+_Avoid_: Learning plan (alone), study planning page, curriculum, Stage Plan
+
+**Subject Goal**:
+A measurable score-improvement target attached to one Subject Plan, such as raising English from 95 to 110. Distinct from the Student Profile's overall current goal.
+_Avoid_: Stage Goal, current goal, motivation
+
+**Knowledge Area**:
+A fixed, product-defined major block within a subject used for score-oriented planning, such as vocabulary, reading, or classical Chinese. Parents enable, order, attach materials, and set intensity; they do not invent the area list. Study Tasks are dated instances generated from an area, not the area itself.
+_Avoid_: Knowledge point, topic, tag, category
+
+**Knowledge Area Intensity**:
+The parent-configured weekly frequency and suggested duration for one enabled Knowledge Area, such as five sessions per week at fifteen minutes each. Generation uses this to place Study Tasks into the Weekly Plan.
+_Avoid_: Priority, weight, difficulty
+
+**Study Material**:
+A parent-maintained named resource attached to a Knowledge Area, such as a workbook, course, or handout title. Name is required; type and note are optional. It is planning context for generated tasks, not Photo Evidence and not an auto-fetched web library.
+_Avoid_: Photo Evidence, resource library, attachment, link dump
+
+**Subject Plan Generation**:
+The explicit parent action that creates missing Weekly Plan Study Tasks from enabled Knowledge Areas for a chosen week. It fills gaps only: existing tasks from an area are kept, parent edits are not overwritten, and hand-added temporary tasks are left alone. It does not write Daily Plan rows directly.
+_Avoid_: Auto-sync, silent rewrite, daily generation
+
 **Weekly Plan**:
-A reusable seven-day learning schedule that defines the default study tasks for each subject.
+A reusable seven-day learning schedule that defines the default study tasks for each subject. Tasks may be generated from enabled Knowledge Areas in the Subject Plan, then edited by the parent.
 _Avoid_: Timetable, calendar
 
 **Task Template**:
@@ -113,7 +137,7 @@ A future runtime shape where the app is deployed to a server for network access 
 _Avoid_: First-version hosting
 
 **Main Page**:
-A top-level product page in the first version, such as today's board, weekly plan, mistake notebook, points and rewards, or exam trends.
+A top-level product page, such as today's board, weekly plan, subject plan, mistake notebook, points and rewards, or data overview.
 _Avoid_: Tab, section
 
 **Open Local Access**:

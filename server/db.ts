@@ -73,6 +73,25 @@ const migrations:Migration[]=[
   reason_note TEXT NOT NULL DEFAULT '',correct_solution TEXT NOT NULL DEFAULT '',
   redo_status TEXT NOT NULL DEFAULT 'not_redone' CHECK(redo_status IN ('not_redone','redone_wrong','redone_correct')),
   created_at TEXT NOT NULL,updated_at TEXT NOT NULL
+ );`)}},
+ {version:8,up(db){db.exec(`ALTER TABLE weekly_tasks ADD COLUMN source_knowledge_area TEXT;
+ CREATE TABLE subject_plans (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  subject TEXT NOT NULL CHECK(subject IN ('chinese','math','english','physics','history')),
+  goal_narrative TEXT NOT NULL DEFAULT '',current_score REAL,target_score REAL,target_date TEXT,
+  created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(student_id,subject)
+ );
+ CREATE TABLE knowledge_area_settings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  subject TEXT NOT NULL,area_id TEXT NOT NULL,enabled INTEGER NOT NULL DEFAULT 0,sort_order INTEGER NOT NULL DEFAULT 0,
+  sessions_per_week INTEGER NOT NULL DEFAULT 3,suggested_duration INTEGER NOT NULL DEFAULT 20,
+  UNIQUE(student_id,subject,area_id)
+ );
+ CREATE TABLE study_materials (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  subject TEXT NOT NULL,area_id TEXT NOT NULL,name TEXT NOT NULL CHECK(length(trim(name)) > 0),
+  material_type TEXT NOT NULL DEFAULT 'other' CHECK(material_type IN ('workbook','course','handout','other')),
+  note TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL
  );`)}}
 ];
 
