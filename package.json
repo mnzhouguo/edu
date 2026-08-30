@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "dev:e2e": "node scripts/prepare-e2e.mjs && cross-env DATABASE_PATH=test-results/e2e.sqlite npm run dev"
+    "dev:e2e": "node scripts/prepare-e2e.mjs && cross-env PORT=3011 WEB_PORT=5174 DATABASE_PATH=test-results/e2e.sqlite PHOTO_LIBRARY=test-results/e2e-photos npm run dev"
   },
   "repository": {
     "type": "git",
@@ -30,6 +30,7 @@
   "dependencies": {
     "express": "^5.2.1",
     "lucide-react": "^1.37.0",
+    "multer": "^2.3.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
@@ -37,6 +38,7 @@
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.62.1",
     "@types/express": "^5.0.6",
+    "@types/multer": "^2.2.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
     "@types/supertest": "^7.2.1",

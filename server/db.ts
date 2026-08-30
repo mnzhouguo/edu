@@ -34,7 +34,46 @@ const migrations:Migration[]=[
    status TEXT NOT NULL DEFAULT 'planned',created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(student_id,task_date,source_weekly_task_id)
   );INSERT INTO daily_tasks_new SELECT * FROM daily_tasks;DROP TABLE daily_tasks;ALTER TABLE daily_tasks_new RENAME TO daily_tasks;
   CREATE INDEX daily_tasks_student_date ON daily_tasks(student_id,task_date,task_order);`)
- }}
+ }},
+ {version:4,up(db){db.exec(`CREATE TABLE submissions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,daily_task_id INTEGER NOT NULL UNIQUE REFERENCES daily_tasks(id) ON DELETE CASCADE,
+  student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,submitted_at TEXT NOT NULL,note TEXT NOT NULL DEFAULT ''
+ );CREATE TABLE photos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  owner_type TEXT NOT NULL CHECK(owner_type IN ('submission','mistake')),owner_id INTEGER NOT NULL,
+  relative_path TEXT NOT NULL,media_type TEXT NOT NULL,original_filename TEXT NOT NULL,size INTEGER NOT NULL,created_at TEXT NOT NULL
+ );CREATE INDEX photos_owner ON photos(owner_type,owner_id);`)}},
+ {version:5,up(db){db.exec(`CREATE TABLE evaluations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,daily_task_id INTEGER NOT NULL UNIQUE REFERENCES daily_tasks(id) ON DELETE CASCADE,
+  student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  completion TEXT NOT NULL CHECK(completion IN ('not_completed','partial','completed','high_quality')),
+  accuracy_band TEXT NOT NULL DEFAULT 'unrecorded',tags TEXT NOT NULL DEFAULT '[]',note TEXT NOT NULL DEFAULT '',
+  earned_points INTEGER NOT NULL,confirmed INTEGER NOT NULL DEFAULT 0,scoring_rule_version TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL
+ );CREATE TABLE point_ledger (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  entry_type TEXT NOT NULL CHECK(entry_type IN ('earn','spend','adjust')),amount INTEGER NOT NULL,
+  source_type TEXT NOT NULL,source_id INTEGER NOT NULL,created_at TEXT NOT NULL
+ );CREATE INDEX point_ledger_student ON point_ledger(student_id,created_at);`)}},
+ {version:6,up(db){db.exec(`CREATE TABLE rewards (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  name TEXT NOT NULL CHECK(length(trim(name)) > 0),category TEXT NOT NULL CHECK(category IN ('cash','game_time','movie','activity','gift')),
+  required_points INTEGER NOT NULL CHECK(required_points > 0),cash_amount INTEGER,description TEXT NOT NULL DEFAULT '',
+  active INTEGER NOT NULL DEFAULT 1,created_at TEXT NOT NULL,updated_at TEXT NOT NULL
+ );CREATE TABLE redemption_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  reward_id INTEGER REFERENCES rewards(id) ON DELETE SET NULL,reward_name TEXT NOT NULL,reward_category TEXT NOT NULL,
+  requested_points INTEGER NOT NULL,status TEXT NOT NULL CHECK(status IN ('pending','approved','rejected')),
+  note TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL,decided_at TEXT
+ );`)}},
+ {version:7,up(db){db.exec(`CREATE TABLE mistakes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  subject TEXT NOT NULL CHECK(subject IN ('chinese','math','english','physics','history')),
+  summary TEXT NOT NULL CHECK(length(trim(summary)) > 0),
+  reason TEXT NOT NULL CHECK(reason IN ('concept','formula','calculation','misread','steps','memory','method','time','other')),
+  reason_note TEXT NOT NULL DEFAULT '',correct_solution TEXT NOT NULL DEFAULT '',
+  redo_status TEXT NOT NULL DEFAULT 'not_redone' CHECK(redo_status IN ('not_redone','redone_wrong','redone_correct')),
+  created_at TEXT NOT NULL,updated_at TEXT NOT NULL
+ );`)}}
 ];
 
 export function openDatabase(filename:string){if(filename!==':memory:')mkdirSync(dirname(filename),{recursive:true});const db=new DatabaseSync(filename);db.exec('PRAGMA foreign_keys = ON;');migrate(db);return db}
