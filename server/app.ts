@@ -1,20 +1,14 @@
-import express from 'express';
-import type { DatabaseSync } from 'node:sqlite';
-import { createStudent, getStudent, listStudents, updateStudent } from './db.js';
-
-function parseStudent(body:unknown) {
-  const value=body as Record<string,unknown>|null;
-  const input={ name:String(value?.name??'').trim(), grade:String(value?.grade??'').trim(), school:String(value?.school??'').trim(), currentGoal:String(value?.currentGoal??'').trim() };
-  return input.name ? input : null;
-}
-export function createApp(db:DatabaseSync) {
-  const app=express();
-  app.use(express.json({limit:'1mb'}));
-  app.get('/api/health',(_req,res)=>res.json({status:'ok'}));
-  app.get('/api/students',(_req,res)=>res.json({students:listStudents(db)}));
-  app.get('/api/students/:id',(req,res)=>{ const student=getStudent(db,Number(req.params.id)); return student ? res.json({student}) : res.status(404).json({message:'没有找到孩子档案'}); });
-  app.post('/api/students',(req,res)=>{ const input=parseStudent(req.body); return input ? res.status(201).json({student:createStudent(db,input)}) : res.status(400).json({message:'姓名或昵称不能为空'}); });
-  app.put('/api/students/:id',(req,res)=>{ const input=parseStudent(req.body); if(!input) return res.status(400).json({message:'姓名或昵称不能为空'}); const student=updateStudent(db,Number(req.params.id),input); return student ? res.json({student}) : res.status(404).json({message:'没有找到孩子档案'}); });
-  app.use('/api',(_req,res)=>res.status(404).json({message:'接口不存在'}));
-  return app;
-}
+import express from 'express';import type { DatabaseSync } from 'node:sqlite';import { createStudent,getStudent,listStudents,updateStudent } from './db.js';import { isMonday,parseIsoDate } from './dates.js';import { createWeeklyTask,deleteWeeklyTask,generateDailyPlan,listDailyTasks,listWeeklyTasks,reorderDailyTasks,subjects,updateWeeklyTask,type WeeklyTaskInput } from './plans.js';
+function parseStudent(body:unknown){const value=body as Record<string,unknown>|null,input={name:String(value?.name??'').trim(),grade:String(value?.grade??'').trim(),school:String(value?.school??'').trim(),currentGoal:String(value?.currentGoal??'').trim()};return input.name?input:null}
+function parseTask(body:unknown):WeeklyTaskInput|null{const value=body as Record<string,unknown>|null,input={weekStart:String(value?.weekStart??''),weekday:Number(value?.weekday),subject:String(value?.subject??''),content:String(value?.content??'').trim(),completionStandard:String(value?.completionStandard??'').trim(),suggestedDuration:Number(value?.suggestedDuration),basePoints:Number(value?.basePoints),taskOrder:Number(value?.taskOrder)};if(!isMonday(input.weekStart)||!Number.isInteger(input.weekday)||input.weekday<1||input.weekday>7||!subjects.includes(input.subject as typeof subjects[number])||!input.content||!input.completionStandard||!Number.isInteger(input.suggestedDuration)||input.suggestedDuration<=0||!Number.isInteger(input.basePoints)||input.basePoints<0||!Number.isInteger(input.taskOrder)||input.taskOrder<1)return null;return input as WeeklyTaskInput}
+export function createApp(db:DatabaseSync){const app=express();app.use(express.json({limit:'1mb'}));
+ app.get('/api/health',(_req,res)=>res.json({status:'ok'}));
+ app.get('/api/students',(_req,res)=>res.json({students:listStudents(db)}));app.get('/api/students/:id',(req,res)=>{const student=getStudent(db,Number(req.params.id));return student?res.json({student}):res.status(404).json({message:'没有找到孩子档案'})});app.post('/api/students',(req,res)=>{const input=parseStudent(req.body);return input?res.status(201).json({student:createStudent(db,input)}):res.status(400).json({message:'姓名或昵称不能为空'})});app.put('/api/students/:id',(req,res)=>{const input=parseStudent(req.body);if(!input)return res.status(400).json({message:'姓名或昵称不能为空'});const student=updateStudent(db,Number(req.params.id),input);return student?res.json({student}):res.status(404).json({message:'没有找到孩子档案'})});
+ app.get('/api/students/:id/weekly-tasks',(req,res)=>{const weekStart=String(req.query.weekStart??'');return isMonday(weekStart)?res.json({tasks:listWeeklyTasks(db,Number(req.params.id),weekStart)}):res.status(400).json({message:'周开始日期必须是有效的周一'})});
+ app.post('/api/students/:id/weekly-tasks',(req,res)=>{const input=parseTask(req.body);if(!input)return res.status(400).json({message:'请完整填写任务和衡量标准'});if(!getStudent(db,Number(req.params.id)))return res.status(404).json({message:'没有找到孩子档案'});return res.status(201).json({task:createWeeklyTask(db,Number(req.params.id),input)})});
+ app.put('/api/students/:studentId/weekly-tasks/:id',(req,res)=>{const input=parseTask(req.body);if(!input)return res.status(400).json({message:'请完整填写任务和衡量标准'});const result=updateWeeklyTask(db,Number(req.params.studentId),Number(req.params.id),input);if(result.status==='locked')return res.status(409).json({message:'已提交的任务不能修改'});return result.status==='ok'?res.json({task:result.value}):res.status(404).json({message:'没有找到周计划任务'})});
+ app.delete('/api/students/:studentId/weekly-tasks/:id',(req,res)=>{const result=deleteWeeklyTask(db,Number(req.params.studentId),Number(req.params.id));if(result.status==='locked')return res.status(409).json({message:'已提交的任务不能删除'});return result.status==='ok'?res.status(204).send():res.status(404).json({message:'没有找到周计划任务'})});
+ app.post('/api/students/:id/daily-plan/generate',(req,res)=>{const date=String(req.body?.date??'');if(!parseIsoDate(date))return res.status(400).json({message:'日期无效'});return res.json({tasks:generateDailyPlan(db,Number(req.params.id),date)})});
+ app.get('/api/students/:id/daily-tasks',(req,res)=>{const date=String(req.query.date??''),subject=req.query.subject?String(req.query.subject):undefined;return parseIsoDate(date)?res.json({tasks:listDailyTasks(db,Number(req.params.id),date,subject)}):res.status(400).json({message:'日期无效'})});
+ app.put('/api/daily-tasks/order',(req,res)=>{const studentId=Number(req.body?.studentId),date=String(req.body?.date??''),orderedIds=Array.isArray(req.body?.orderedIds)?req.body.orderedIds.map(Number):[];if(!parseIsoDate(date))return res.status(400).json({message:'日期无效'});const tasks=reorderDailyTasks(db,studentId,date,orderedIds);return tasks?res.json({tasks}):res.status(400).json({message:'任务排序数据无效'})});
+ app.use('/api',(_req,res)=>res.status(404).json({message:'接口不存在'}));return app}
