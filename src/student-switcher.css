@@ -1,7 +1,7 @@
 main>.topbar{z-index:40}
 .student-switcher{position:relative;display:flex;align-items:center}
-.student-switcher-trigger{display:flex;align-items:center;gap:8px;min-height:40px;min-width:168px;padding:0 10px 0 8px;border:1px solid transparent;border-radius:8px;background:transparent;color:#17332d;font-weight:700;text-align:left}
-.student-switcher-trigger span{flex:1;min-width:0}
+.student-switcher-trigger{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 10px 0 8px;border:1px solid transparent;border-radius:8px;background:transparent;color:#17332d;font-weight:700;text-align:left}
+.student-switcher-trigger span{min-width:0}
 .student-switcher-trigger .student-avatar{flex:none}
 .student-switcher-trigger .chevron{flex:none;color:#8a979e;transition:transform .16s ease,color .16s ease}
 .student-switcher-trigger:hover,.student-switcher.open .student-switcher-trigger{border-color:#d5e3df;background:#f4f9f7}

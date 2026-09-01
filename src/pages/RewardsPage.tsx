@@ -6,11 +6,19 @@ import { type Redemption,type Reward } from '../types';
 
 type RewardForm={name:string;requiredPoints:number|'';description:string;active:boolean};
 type PointsOverview={balance:number;totalEarned:number;weekEarned:number;weekRedeemed:number};
-type LedgerEntry={id:number;entryType:string;amount:number;sourceType:string;note:string;sourceLabel:string;createdAt:string};
-type ExtraForm={amount:number|'';note:string};
+type LedgerEntry={id:number;entryType:string;amount:number;sourceType:string;category:string;categoryLabel:string;note:string;sourceLabel:string;createdAt:string};
+type ExtraCategory='school_praise'|'goal_achieved'|'housework'|'excellent_homework'|'other';
+type ExtraForm={amount:number|'';category:ExtraCategory;note:string};
 const emptyPoints:PointsOverview={balance:0,totalEarned:0,weekEarned:0,weekRedeemed:0};
 const emptyForm:RewardForm={name:'',requiredPoints:50,description:'',active:true};
-const emptyExtra:ExtraForm={amount:10,note:''};
+const extraCategories:{id:ExtraCategory;label:string}[]=[
+ {id:'school_praise',label:'学校表扬'},
+ {id:'goal_achieved',label:'目标达成'},
+ {id:'housework',label:'家务'},
+ {id:'excellent_homework',label:'作业优秀'},
+ {id:'other',label:'其他'},
+];
+const emptyExtra:ExtraForm={amount:10,category:'school_praise',note:''};
 
 function parseNumberInput(raw:string):number|''{
  if(raw==='')return '';
@@ -33,10 +41,10 @@ function redemptionLabel(status:string){
  return '待处理';
 }
 
-function earnSourceKind(sourceType:string){
- if(sourceType==='extra_reward')return '额外奖励';
- if(sourceType==='weekly_task')return '学习任务';
- if(sourceType==='evaluation')return '任务评价';
+function earnSourceKind(entry:Pick<LedgerEntry,'sourceType'|'categoryLabel'>){
+ if(entry.sourceType==='extra_reward')return entry.categoryLabel||'额外奖励';
+ if(entry.sourceType==='weekly_task')return '学习任务';
+ if(entry.sourceType==='evaluation')return '任务评价';
  return '其他';
 }
 
@@ -145,9 +153,13 @@ export function RewardsPage({studentId}:{studentId:number}){
   event.preventDefault();
   if(!extraDraft)return;
   if(extraDraft.amount===''||extraDraft.amount<1){setError('请填写正整数积分');return}
-  if(!extraDraft.note.trim()){setError('请填写奖励说明，例如微信群老师表扬');return}
+  if(!extraDraft.category){setError('请选择奖励类型');return}
   try{
-   await api(`/api/students/${studentId}/points/extra-rewards`,{method:'POST',body:JSON.stringify({amount:extraDraft.amount,note:extraDraft.note.trim()})});
+   await api(`/api/students/${studentId}/points/extra-rewards`,{method:'POST',body:JSON.stringify({
+    amount:extraDraft.amount,
+    category:extraDraft.category,
+    note:extraDraft.note.trim(),
+   })});
    setExtraDraft(null);
    setMessage(`已登记额外奖励 +${extraDraft.amount} 分`);
    await load();
@@ -248,7 +260,7 @@ export function RewardsPage({studentId}:{studentId:number}){
        return <tr key={item.id}>
         <td>{when.date} {when.time}</td>
         <td><strong>{item.sourceLabel}</strong></td>
-        <td>{earnSourceKind(item.sourceType)}</td>
+        <td>{earnSourceKind(item)}</td>
         <td>+{item.amount}</td>
        </tr>;
       })}
@@ -295,9 +307,14 @@ export function RewardsPage({studentId}:{studentId:number}){
    <form className="side-drawer" onSubmit={saveExtra}>
     <div className="drawer-head"><div><span className="eyebrow">Extra Reward</span><h2>登记额外奖励</h2></div><button className="icon-button" onClick={()=>setExtraDraft(null)} title="关闭" type="button"><X size={20}/></button></div>
     <div className="drawer-body">
-     <p className="drawer-help">用于记录学习任务以外的积分奖励，例如微信群里老师表扬、课堂表演等。</p>
+     <p className="drawer-help">用于记录学习任务以外的积分奖励，例如学校表扬、目标达成、家务等。</p>
+     <label>奖励类型
+      <select aria-label="奖励类型" value={extraDraft.category} onChange={event=>patchExtra({category:event.target.value as ExtraCategory})}>
+       {extraCategories.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}
+      </select>
+     </label>
      <label>奖励积分<input aria-label="奖励积分" autoFocus min="1" type="number" value={extraDraft.amount} onChange={event=>patchExtra({amount:parseNumberInput(event.target.value)})}/></label>
-     <label>奖励说明<textarea aria-label="奖励说明" rows={4} placeholder="例如：微信群老师表扬课堂表演" value={extraDraft.note} onChange={event=>patchExtra({note:event.target.value})}/></label>
+     <label>补充说明<textarea aria-label="补充说明" rows={4} placeholder="选填，例如：微信群老师表扬课堂表演" value={extraDraft.note} onChange={event=>patchExtra({note:event.target.value})}/></label>
     </div>
     <div className="drawer-actions">
      <button className="secondary" onClick={()=>setExtraDraft(null)} type="button">取消</button>

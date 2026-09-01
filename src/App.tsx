@@ -23,7 +23,7 @@ const nav:[Page,string,typeof ClipboardCheck][]=[
  ['week','每周计划',CalendarDays],
  ['rewards','积分兑换',Gift],
  ['dashboard','数据概览',LayoutDashboard],
- ['settings','设置',Settings],
+ ['settings','基础设置',Settings],
 ];
 
 export function App(){

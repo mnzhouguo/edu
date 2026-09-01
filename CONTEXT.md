@@ -13,7 +13,7 @@ The numeric learning currency earned from evaluated study tasks and spent on rew
 _Avoid_: Coins, score
 
 **Extra Channel Points**:
-A parent-recorded Points earn that did not come from completing a Study Task, with a required reason note. Examples include teacher praise, classroom performance, or other family-recognized achievements. These entries appear in the Points earn history on the Points Exchange page.
+A parent-recorded Points earn that did not come from completing a Study Task. Each entry requires a category: school praise (学校表扬), goal achieved (目标达成), housework (家务), excellent homework (作业优秀), or other (其他). An optional reason note can add detail, such as teacher praise in a class WeChat group. These entries appear in the Points earn history on the Points Exchange page.
 _Avoid_: Manual backfill, makeup points, fake task completion
 
 **Subject Weight**:

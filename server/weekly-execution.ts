@@ -18,7 +18,7 @@ export function parseWeeklyExecution(body:unknown,task:WeeklyTaskView):WeeklyExe
  const actualDuration=Number(value?.actualDuration);
  if(!Number.isInteger(actualDuration)||actualDuration<=0)return '请填写实际完成时长';
  const rubric=task.evaluationRubric;
- if(!rubric?.dimensions.length)return '缺少挑战积分，无法完成打分';
+ if(!rubric?.dimensions.length)return '缺少积分规则，无法完成打分';
  const rawScores=value?.dimensionScores;
  if(!rawScores||typeof rawScores!=='object'||Array.isArray(rawScores))return '请按维度打分';
  const scoreMap=rawScores as Record<string,unknown>;

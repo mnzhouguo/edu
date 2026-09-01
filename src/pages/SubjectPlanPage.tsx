@@ -235,7 +235,7 @@ export function SubjectPlanPage({studentId,onOpenWeeklyPlan}:{studentId:number;o
         :<button aria-label="新增辅导资料" className="icon-button" onClick={openNewMaterial} title="新增辅导资料" type="button"><CirclePlus size={17}/></button>}
       </div>
      </div>
-     {planTab==='items'?<div className="table-wrap" role="tabpanel"><table className="editor-table plan-items-table display-table"><thead><tr><th>要完成的事项</th><th>执行频率</th><th>辅导资料</th><th>每次时长</th><th>挑战积分</th><th>总分</th><th>状态</th><th aria-label="操作"></th></tr></thead><tbody>
+     {planTab==='items'?<div className="table-wrap" role="tabpanel"><table className="editor-table plan-items-table display-table"><thead><tr><th>要完成的事项</th><th>执行频率</th><th>辅导资料</th><th>每次时长</th><th>积分规则</th><th>总分</th><th>状态</th><th aria-label="操作"></th></tr></thead><tbody>
       {items.length?items.map(item=><tr className="interactive-row" key={item.id} onDoubleClick={event=>{if((event.target as HTMLElement).closest('button'))return;openEditItem(item)}} title="双击编辑">
        <td><strong>{item.name}</strong></td><td>{scheduleText(item)}</td><td>{item.materialName||'不指定'}</td><td>{item.suggestedDuration} 分钟</td><td className="rubric-cell">{item.evaluationRubric?<RubricPreview rubric={item.evaluationRubric}/>:<span className="muted-cell">{item.completionStandard}</span>}</td><td>{item.basePoints}</td><td><span className={`status-dot ${item.active?'active':'inactive'}`}>{item.active?'启用':'停用'}</span></td><td><div className="hover-actions"><button aria-label={`编辑${item.name}`} className="icon-button" onClick={()=>openEditItem(item)} title="编辑事项"><Pencil size={16}/></button><button aria-label={`删除${item.name}`} className="icon-button danger" onClick={()=>void removeItem(item.id)} title="删除事项"><Trash2 size={16}/></button></div></td>
       </tr>):<tr><td className="empty-cell" colSpan={8}><button className="list-empty-action" onClick={openNewItem} type="button"><CirclePlus size={18}/>还没有规划事项，点击添加</button></td></tr>}
@@ -267,9 +267,9 @@ export function SubjectPlanPage({studentId,onOpenWeeklyPlan}:{studentId:number;o
      <label>辅导资料<select aria-label="辅导资料" value={itemDraft.materialId??''} onChange={event=>patchDraft({materialId:event.target.value?Number(event.target.value):null})}><option value="">不指定</option>{materials.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
      <div className="form-row"><label>每次时长（分钟）<input aria-label="每次时长" min="1" type="number" value={itemDraft.suggestedDuration} onChange={event=>patchDraft({suggestedDuration:parseNumberInput(event.target.value)})}/></label><label>总分<input aria-label="总分" min="0" type="number" value={itemDraft.basePoints} onChange={event=>changeTotalPoints(event.target.value)}/></label></div>
 
-     <section className="rubric-editor" aria-label="挑战积分">
+     <section className="rubric-editor" aria-label="积分规则">
       <div className="rubric-editor-head">
-       <strong>挑战积分</strong>
+       <strong>积分规则</strong>
        <div className="rubric-editor-tools">
         <span className={`rubric-budget ${remaining<0?'over':remaining===0&&itemDraft.basePoints!==''?'exact':'under'}`}>{allocated}/{itemDraft.basePoints===''?'—':itemDraft.basePoints}分{itemDraft.basePoints!==''&&remaining>0?` · 剩${remaining}`:remaining<0?` · 超${-remaining}`:''}</span>
         <button aria-label="添加维度" className="icon-button" onClick={addDimension} title="添加维度" type="button"><CirclePlus size={16}/></button>

@@ -53,7 +53,7 @@ export function SettingsPage({student,onSaved,onCreateStudent,onEditStudent}:{st
  return <div className="settings-page">
   <div className="week-plan-head">
    <div>
-    <h1 className="subject-plan-title">设置</h1>
+    <h1 className="subject-plan-title">基础设置</h1>
     <p className="week-plan-subtitle">管理孩子档案，并配置本学期时间。</p>
    </div>
   </div>

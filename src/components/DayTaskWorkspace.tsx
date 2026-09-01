@@ -9,7 +9,7 @@ import { Drawer } from './Drawer';
 type DraftDimension=Omit<RubricDimension,'maxPoints'>&{maxPoints:number|''};
 type DraftRubric={dimensions:DraftDimension[]};
 type TaskForm={weekday:number;subject:Subject;content:string;completionStandard:string;suggestedDuration:number|'';basePoints:number|'';taskOrder:number|'';evaluationRubric:DraftRubric};
-type ScoreDraft={taskId:number;actualDuration:number|'';scores:Record<string,number|''>};
+type ScoreDraft={taskId:number;actualDuration:number|'';scores:Record<string,number|''>;pristineDefaults:Record<string,boolean>};
 
 function parseNumberInput(raw:string):number|''{
  if(raw==='')return '';
@@ -82,7 +82,6 @@ export function DayTaskWorkspace({
  const[scoreDraft,setScoreDraft]=useState<ScoreDraft|null>(null);
  const[error,setError]=useState('');
  const[scoreError,setScoreError]=useState('');
- const[message,setMessage]=useState('');
  const[draggedTaskId,setDraggedTaskId]=useState<number|null>(null);
  const[dropTarget,setDropTarget]=useState<WeeklyExecutionStatus|null>(null);
  const activeSubject=onSubjectFilterChange?subjectFilter:internalSubject;
@@ -135,11 +134,23 @@ export function DayTaskWorkspace({
  }
  function openComplete(task:WeeklyTask){
   const rubric=task.evaluationRubric;
-  if(!rubric?.dimensions.length){setError('该任务缺少挑战积分，无法打分完成');return}
+  if(!rubric?.dimensions.length){setError('该任务缺少积分规则，无法打分完成');return}
+  const scores:Record<string,number|''>={};
+  const pristineDefaults:Record<string,boolean>={};
+  for(const dimension of rubric.dimensions){
+   const existing=task.dimensionScores?.[dimension.id];
+   if(existing===undefined){
+    scores[dimension.id]=dimension.maxPoints;
+    pristineDefaults[dimension.id]=true;
+   }else{
+    scores[dimension.id]=existing;
+   }
+  }
   setScoreDraft({
    taskId:task.id,
    actualDuration:task.actualDuration??task.suggestedDuration,
-   scores:Object.fromEntries(rubric.dimensions.map(dimension=>[dimension.id,task.dimensionScores?.[dimension.id]??''])),
+   scores,
+   pristineDefaults,
   });
   setScoreError('');
   setError('');
@@ -150,7 +161,6 @@ export function DayTaskWorkspace({
    const cleared={...result.task,actualDuration:null,earnedPoints:null,dimensionScores:null,executionStatus:status};
    setTasks(current=>current.map(task=>task.id===cleared.id?cleared:task));
    if(scoreDraft?.taskId===taskId){setScoreDraft(null);setScoreError('')}
-   setMessage(status==='voided'?'任务已作废':status==='deferred'?'任务已延期':'任务已恢复为未开始，积分已清空');
    setError('');
    await onReload();
   }catch(reason){setError(reason instanceof Error?reason.message:'更新状态失败')}
@@ -177,7 +187,6 @@ export function DayTaskWorkspace({
    setTasks(current=>current.map(task=>task.id===result.task.id?result.task:task));
    setScoreDraft(null);
    setScoreError('');
-   setMessage(`任务已完成，实得 ${result.task.earnedPoints??0} 分`);
    setError('');
    await onReload();
   }catch(reason){setScoreError(reason instanceof Error?reason.message:'完成打分失败')}
@@ -190,7 +199,7 @@ export function DayTaskWorkspace({
   if(draft.basePoints===''){setError('请填写基础积分');return}
   if(draft.evaluationRubric.dimensions.some(dimension=>dimension.maxPoints==='')){setError('请填写维度满分');return}
   const evaluationRubric=finalizeRubric(draft.evaluationRubric);
-  if(!evaluationRubric){setError('请配置挑战积分');return}
+  if(!evaluationRubric){setError('请配置积分规则');return}
   const rubricError=validateRubricAgainstTotal(evaluationRubric,draft.basePoints);
   if(rubricError){setError(rubricError);return}
   const completionStandard=summarizeRubric(evaluationRubric);
@@ -211,7 +220,6 @@ export function DayTaskWorkspace({
   try{
    await api(draft.id?`/api/students/${studentId}/weekly-tasks/${draft.id}`:`/api/students/${studentId}/weekly-tasks`,{method:draft.id?'PUT':'POST',body:JSON.stringify(payload)});
    setDraft(null);
-   setMessage(draft.id?'任务已更新':'任务已添加');
    setError('');
    await onReload();
   }catch(reason){setError(reason instanceof Error?reason.message:'保存失败')}
@@ -223,14 +231,12 @@ export function DayTaskWorkspace({
   try{
    await api(`/api/students/${studentId}/weekly-tasks/${id}`,{method:'DELETE'});
    if(draft?.id===id)setDraft(null);
-   setMessage('任务已删除');
    await onReload();
   }catch(reason){setError(reason instanceof Error?reason.message:'删除失败')}
  }
 
  return <>
   {error&&<p className="error">{error}</p>}
-  {message&&<p className="success-message">{message}</p>}
   <section className="panel compact-panel week-day-panel">
    <div className="panel-head week-day-overview-head">
     {title}
@@ -246,7 +252,7 @@ export function DayTaskWorkspace({
     </div>
     <button aria-label={addAriaLabel} className="icon-button" onClick={openCreate} title={addAriaLabel} type="button"><CirclePlus size={17}/></button>
    </div>
-   <div className="week-task-filters" aria-label="任务筛选">
+   {(viewMode==='list'||showSubjectFilter)&&<div className="week-task-filters" aria-label="任务筛选">
     {viewMode==='list'&&<div className="week-filter-row" role="tablist" aria-label="按状态筛选">
      <span>状态</span>
      <button className={statusFilter==='all'?'active':''} onClick={()=>setStatusFilter('all')} role="tab" type="button">全部</button>
@@ -257,7 +263,7 @@ export function DayTaskWorkspace({
      <button className={activeSubject==='all'?'active':''} onClick={()=>setActiveSubject('all')} role="tab" type="button">全部</button>
      {subjectOptions.map(item=><button className={activeSubject===item.id?'active':''} key={item.id} onClick={()=>setActiveSubject(item.id)} role="tab" type="button">{item.label}</button>)}
     </div>}
-   </div>
+   </div>}
    {viewMode==='list'?(dayTasks.length?<div className="table-wrap"><table className="editor-table week-day-table display-table execution-table"><thead><tr><th>状态</th><th>科目</th><th>学习内容</th><th>计划时长</th><th>实际时长</th><th>基础积分</th><th>实得积分</th><th aria-label="操作"></th></tr></thead><tbody>
     {dayTasks.map(task=><tr className={`interactive-row status-${task.executionStatus}`} key={task.id} onDoubleClick={event=>{if((event.target as HTMLElement).closest('button'))return;openEdit(task)}} title="双击编辑内容">
      <td><span className={`execution-status ${task.executionStatus}`}><StatusIcon status={task.executionStatus}/>{weeklyExecutionLabel(task.executionStatus)}</span></td>
@@ -343,7 +349,7 @@ export function DayTaskWorkspace({
     <div className="drawer-body">
      <p className="drawer-help">{scoringTask.content} · 标准总分 {scoringTask.basePoints}（可超标准）</p>
      <label>实际完成时长（分钟）<input aria-label="实际完成时长" autoFocus min="1" type="number" value={scoreDraft.actualDuration} onChange={event=>setScoreDraft({...scoreDraft,actualDuration:parseNumberInput(event.target.value)})}/></label>
-     <section className="rubric-editor" aria-label="挑战积分打分">
+     <section className="rubric-editor" aria-label="积分规则打分">
       <div className="rubric-editor-head">
        <strong>按维度打分</strong>
        <span className="rubric-budget exact">合计 <strong>{scoreTotal}</strong> / 标准 {scoreMax}</span>
@@ -353,7 +359,18 @@ export function DayTaskWorkspace({
        {scoringTask.evaluationRubric?.dimensions.map(dimension=><div className="rubric-simple-row score-row" key={dimension.id}>
         <span>{dimension.name}</span>
         <span className="muted-cell">{dimension.maxPoints}</span>
-        <input aria-label={`${dimension.name}得分`} min="0" type="number" value={scoreDraft.scores[dimension.id]??''} onChange={event=>setScoreDraft({...scoreDraft,scores:{...scoreDraft.scores,[dimension.id]:parseNumberInput(event.target.value)}})}/>
+        <input
+         aria-label={`${dimension.name}得分`}
+         className={scoreDraft.pristineDefaults[dimension.id]?'score-input is-default':undefined}
+         min="0"
+         type="number"
+         value={scoreDraft.scores[dimension.id]??''}
+         onChange={event=>setScoreDraft({
+          ...scoreDraft,
+          scores:{...scoreDraft.scores,[dimension.id]:parseNumberInput(event.target.value)},
+          pristineDefaults:{...scoreDraft.pristineDefaults,[dimension.id]:false},
+         })}
+        />
        </div>)}
       </div>
      </section>
@@ -388,9 +405,9 @@ export function DayTaskWorkspace({
       <label>建议时长（分钟）<input aria-label="建议时长" min="1" type="number" value={draft.suggestedDuration} onChange={event=>patchDraft({suggestedDuration:parseNumberInput(event.target.value)})}/></label>
       <label>基础积分<input aria-label="基础积分" min="0" type="number" value={draft.basePoints} onChange={event=>changeBasePoints(parseNumberInput(event.target.value))}/></label>
      </div>
-     <section className="rubric-editor" aria-label="挑战积分">
+     <section className="rubric-editor" aria-label="积分规则">
       <div className="rubric-editor-head">
-       <strong>挑战积分</strong>
+       <strong>积分规则</strong>
        <div className="rubric-editor-tools">
         <span className={`rubric-budget ${remaining<0?'over':remaining===0&&draft.basePoints!==''?'exact':'under'}`}>{allocated}/{draft.basePoints===''?'—':draft.basePoints}分{draft.basePoints!==''&&remaining>0?` · 剩${remaining}`:remaining<0?` · 超${-remaining}`:''}</span>
         <button aria-label="添加维度" className="icon-button" onClick={addDimension} title="添加维度" type="button"><CirclePlus size={16}/></button>

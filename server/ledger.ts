@@ -1,6 +1,15 @@
 import type { DatabaseSync,SQLInputValue } from 'node:sqlite';
 import { dateInfo } from './dates.js';
 
+export const extraRewardCategories=[
+ {id:'school_praise',label:'学校表扬'},
+ {id:'goal_achieved',label:'目标达成'},
+ {id:'housework',label:'家务'},
+ {id:'excellent_homework',label:'作业优秀'},
+ {id:'other',label:'其他'},
+] as const;
+export type ExtraRewardCategory=typeof extraRewardCategories[number]['id'];
+
 export type LedgerEntry={
  id:number;
  studentId:number;
@@ -8,15 +17,22 @@ export type LedgerEntry={
  amount:number;
  sourceType:string;
  sourceId:number;
+ category:string;
+ categoryLabel:string;
  note:string;
  sourceLabel:string;
  createdAt:string;
 };
 
+export function extraRewardCategoryLabel(category:string){
+ return extraRewardCategories.find(item=>item.id===category)?.label??'';
+}
+
 function sourceLabelFor(row:Record<string,unknown>){
  const note=String(row.note??'').trim();
  const sourceType=String(row.source_type);
- if(sourceType==='extra_reward')return note||'额外奖励';
+ const categoryLabel=extraRewardCategoryLabel(String(row.category??''));
+ if(sourceType==='extra_reward')return note||categoryLabel||'额外奖励';
  if(sourceType==='weekly_task'){
   const content=row.weekly_task_content==null?'' :String(row.weekly_task_content).trim();
   return content||(note||'学习任务');
@@ -33,6 +49,7 @@ function sourceLabelFor(row:Record<string,unknown>){
 }
 
 function mapEntry(row:Record<string,unknown>):LedgerEntry{
+ const category=String(row.category??'');
  return {
   id:Number(row.id),
   studentId:Number(row.student_id),
@@ -40,6 +57,8 @@ function mapEntry(row:Record<string,unknown>):LedgerEntry{
   amount:Number(row.amount),
   sourceType:String(row.source_type),
   sourceId:Number(row.source_id),
+  category,
+  categoryLabel:extraRewardCategoryLabel(category),
   note:String(row.note??''),
   sourceLabel:sourceLabelFor(row),
   createdAt:String(row.created_at),
@@ -73,23 +92,25 @@ export function purgeOrphanWeeklyTaskLedger(db:DatabaseSync){
  db.exec("DELETE FROM point_ledger WHERE source_type='weekly_task' AND source_id NOT IN (SELECT id FROM weekly_tasks)");
 }
 
-export function addLedgerEntry(db:DatabaseSync,studentId:number,entryType:'earn'|'spend'|'adjust',amount:number,sourceType:string,sourceId:number,note=''){
+export function addLedgerEntry(db:DatabaseSync,studentId:number,entryType:'earn'|'spend'|'adjust',amount:number,sourceType:string,sourceId:number,note='',category=''){
  const now=new Date().toISOString();
- const result=db.prepare('INSERT INTO point_ledger(student_id,entry_type,amount,source_type,source_id,note,created_at) VALUES (?,?,?,?,?,?,?)')
-  .run(studentId,entryType,amount,sourceType,sourceId,note.trim(),now);
+ const result=db.prepare('INSERT INTO point_ledger(student_id,entry_type,amount,source_type,source_id,note,category,created_at) VALUES (?,?,?,?,?,?,?,?)')
+  .run(studentId,entryType,amount,sourceType,sourceId,note.trim(),category,now);
  return Number(result.lastInsertRowid);
 }
 
-export function parseExtraReward(body:unknown):{amount:number;note:string}|null{
+export function parseExtraReward(body:unknown):{amount:number;category:ExtraRewardCategory;note:string}|null{
  const value=body as Record<string,unknown>|null;
  const amount=Number(value?.amount);
+ const category=String(value?.category??'') as ExtraRewardCategory;
  const note=String(value?.note??'').trim();
- if(!Number.isInteger(amount)||amount<=0||!note)return null;
- return {amount,note};
+ if(!Number.isInteger(amount)||amount<=0)return null;
+ if(!extraRewardCategories.some(item=>item.id===category))return null;
+ return {amount,category,note};
 }
 
-export function createExtraReward(db:DatabaseSync,studentId:number,input:{amount:number;note:string}){
- const id=addLedgerEntry(db,studentId,'earn',input.amount,'extra_reward',0,input.note);
+export function createExtraReward(db:DatabaseSync,studentId:number,input:{amount:number;category:ExtraRewardCategory;note:string}){
+ const id=addLedgerEntry(db,studentId,'earn',input.amount,'extra_reward',0,input.note,input.category);
  return getLedgerEntry(db,studentId,id)!;
 }
 

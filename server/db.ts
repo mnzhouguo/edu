@@ -178,7 +178,8 @@ const migrations:Migration[]=[
   ALTER TABLE rewards_new RENAME TO rewards;
   PRAGMA foreign_keys=ON;`);
  }},
- {version:20,up(db){db.exec("ALTER TABLE point_ledger ADD COLUMN note TEXT NOT NULL DEFAULT ''")}}
+ {version:20,up(db){db.exec("ALTER TABLE point_ledger ADD COLUMN note TEXT NOT NULL DEFAULT ''")}},
+ {version:21,up(db){db.exec("ALTER TABLE point_ledger ADD COLUMN category TEXT NOT NULL DEFAULT ''")}}
 ];
 
 export function openDatabase(filename:string){if(filename!==':memory:')mkdirSync(dirname(filename),{recursive:true});const db=new DatabaseSync(filename);db.exec('PRAGMA foreign_keys = ON;');migrate(db);return db}

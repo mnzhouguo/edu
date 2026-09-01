@@ -15,7 +15,7 @@ test('creates and switches active students',async({page})=>{
  await page.getByRole('button',{name:'保存档案'}).click();
  await expect(page.getByRole('heading',{name:'小周的学习工作台'})).toBeVisible();
  await expect(page.locator('.student-switcher-trigger .student-avatar img')).toBeVisible();
- await page.locator('.sidebar').getByRole('button',{name:'设置'}).click();
+ await page.locator('.sidebar').getByRole('button',{name:'基础设置'}).click();
  await expect(page.getByRole('button',{name:'编辑当前孩子'})).toBeVisible();
  await page.getByRole('button',{name:'编辑当前孩子'}).click();
  await page.getByLabel('当前目标').fill('进入年级前50名');

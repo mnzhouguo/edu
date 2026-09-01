@@ -40,7 +40,7 @@ test('runs the V1 core loop and keeps pages scoped to the active student',async(
  await expect(metrics.locator('article').filter({hasText:'本周获得'})).toContainText('10');
  await expect(metrics.locator('article').filter({hasText:'本周已兑'})).toContainText('10');
 
- await page.locator('.sidebar').getByRole('button',{name:'设置'}).click();
+ await page.locator('.sidebar').getByRole('button',{name:'基础设置'}).click();
  await page.getByRole('button',{name:'新增孩子'}).click();
  await page.getByLabel('姓名或昵称').fill('另一个孩子');
  await page.getByRole('button',{name:'保存档案'}).click();

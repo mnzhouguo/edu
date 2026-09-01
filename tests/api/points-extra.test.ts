@@ -9,16 +9,18 @@ describe('Extra channel points reward',()=>{
  beforeEach(async()=>{workspace=tempWorkspace();({db,app}=openApp(workspace));studentId=await createStudent(app)});
  afterEach(()=>{db.close();rmSync(workspace.directory,{recursive:true,force:true})});
 
- it('records an extra-channel points reward with a reason note',async()=>{
+ it('records an extra-channel points reward with a category and reason note',async()=>{
   const created=await request(app).post(`/api/students/${studentId}/points/extra-rewards`)
-   .send({amount:15,note:'微信群老师表扬表演'})
+   .send({amount:15,category:'school_praise',note:'微信群老师表扬表演'})
    .expect(201);
   expect(created.body.entry).toMatchObject({
    entryType:'earn',
    amount:15,
    sourceType:'extra_reward',
+   category:'school_praise',
    note:'微信群老师表扬表演',
    sourceLabel:'微信群老师表扬表演',
+   categoryLabel:'学校表扬',
   });
   expect(created.body.pointsBalance).toBe(15);
 
@@ -26,13 +28,32 @@ describe('Extra channel points reward',()=>{
   expect(points).toMatchObject({balance:15,totalEarned:15,weekEarned:15});
   const earns=points.entries.filter((entry:{entryType:string})=>entry.entryType==='earn');
   expect(earns).toHaveLength(1);
-  expect(earns[0]).toMatchObject({amount:15,note:'微信群老师表扬表演',sourceLabel:'微信群老师表扬表演',sourceType:'extra_reward'});
+  expect(earns[0]).toMatchObject({
+   amount:15,
+   category:'school_praise',
+   categoryLabel:'学校表扬',
+   note:'微信群老师表扬表演',
+   sourceType:'extra_reward',
+  });
+ });
+
+ it('uses the category label when no note is provided',async()=>{
+  const created=await request(app).post(`/api/students/${studentId}/points/extra-rewards`)
+   .send({amount:8,category:'housework'})
+   .expect(201);
+  expect(created.body.entry).toMatchObject({
+   category:'housework',
+   categoryLabel:'家务',
+   note:'',
+   sourceLabel:'家务',
+  });
  });
 
  it('rejects invalid extra rewards',async()=>{
-  await request(app).post(`/api/students/${studentId}/points/extra-rewards`).send({amount:0,note:'表扬'}).expect(400);
-  await request(app).post(`/api/students/${studentId}/points/extra-rewards`).send({amount:10,note:'   '}).expect(400);
-  await request(app).post(`/api/students/${studentId}/points/extra-rewards`).send({amount:1.5,note:'表扬'}).expect(400);
+  await request(app).post(`/api/students/${studentId}/points/extra-rewards`).send({amount:0,category:'school_praise',note:'表扬'}).expect(400);
+  await request(app).post(`/api/students/${studentId}/points/extra-rewards`).send({amount:10,category:'unknown',note:'表扬'}).expect(400);
+  await request(app).post(`/api/students/${studentId}/points/extra-rewards`).send({amount:10,note:'表扬'}).expect(400);
+  await request(app).post(`/api/students/${studentId}/points/extra-rewards`).send({amount:1.5,category:'other',note:'表扬'}).expect(400);
   expect((await request(app).get(`/api/students/${studentId}/points`).expect(200)).body.balance).toBe(0);
  });
 

@@ -191,7 +191,7 @@ export function createApp(db:DatabaseSync,options:AppOptions={}){
   const studentId=Number(req.params.id);
   if(!getStudent(db,studentId))return res.status(404).json({message:'没有找到孩子档案'});
   const input=parseExtraReward(req.body);
-  if(!input)return res.status(400).json({message:'请填写正整数积分和奖励说明'});
+  if(!input)return res.status(400).json({message:'请选择奖励类型，并填写正整数积分'});
   const entry=createExtraReward(db,studentId,input);
   return res.status(201).json({entry,pointsBalance:pointsBalance(db,studentId)});
  });
