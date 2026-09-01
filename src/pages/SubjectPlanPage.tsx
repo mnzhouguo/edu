@@ -49,13 +49,14 @@ function RubricPreview({rubric}:{rubric:EvaluationRubric}){
 }
 
 export function SubjectPlanPage({studentId,onOpenWeeklyPlan}:{studentId:number;onOpenWeeklyPlan?:()=>void}){
- const{subjects:subjectOptions,label:subjectName}=useSubjectCatalog();
- const planSubjects=useMemo(()=>subjectOptions.filter(item=>!item.custom),[subjectOptions]);
+ const{subjects:subjectOptions,label:subjectName,addSubject:createSubject}=useSubjectCatalog();
  const[subject,setSubject]=useState<Subject>('chinese');
  const[plan,setPlan]=useState<SubjectPlan|null>(null);
  const[items,setItems]=useState<SubjectPlanItem[]>([]);
  const[error,setError]=useState('');
  const[message,setMessage]=useState('');
+ const[newSubjectName,setNewSubjectName]=useState('');
+ const[subjectDrawer,setSubjectDrawer]=useState(false);
  const[materialDraft,setMaterialDraft]=useState<MaterialDraft|null>(null);
  const[goalDrawer,setGoalDrawer]=useState(false);
  const[itemDraft,setItemDraft]=useState<ItemDraft|null>(null);
@@ -79,10 +80,23 @@ export function SubjectPlanPage({studentId,onOpenWeeklyPlan}:{studentId:number;o
  }
 
  useEffect(()=>{
-  if(!planSubjects.length)return;
-  setSubject(current=>planSubjects.some(item=>item.id===current)?current:planSubjects[0].id);
- },[studentId,planSubjects]);
+  if(!subjectOptions.length)return;
+  setSubject(current=>subjectOptions.some(item=>item.id===current)?current:subjectOptions[0].id);
+ },[studentId,subjectOptions]);
  useEffect(()=>{setPlan(null);setItems([]);setItemDraft(null);setMaterialDraft(null);setPlanTab('items');void load()},[studentId,subject]);
+
+ async function addSubject(event:React.FormEvent){
+  event.preventDefault();
+  if(!newSubjectName.trim())return;
+  try{
+   const created=await createSubject(newSubjectName.trim());
+   setSubject(created.id);
+   setNewSubjectName('');
+   setSubjectDrawer(false);
+   setMessage('科目已添加');
+   setError('');
+  }catch(reason){setError(reason instanceof Error?reason.message:'新增科目失败')}
+ }
 
  function openNewItem(){
   const basePoints=10;
@@ -204,7 +218,13 @@ export function SubjectPlanPage({studentId,onOpenWeeklyPlan}:{studentId:number;o
 
  return <>
   <div className="subject-plan-page">
-   <aside className="subject-rail"><div className="subject-rail-title">科目</div><div className="subject-rail-list" role="tablist">{planSubjects.map(item=><button className={subject===item.id?'active':''} key={item.id} onClick={()=>setSubject(item.id)} role="tab"><span>{item.label}</span></button>)}</div></aside>
+   <aside className="subject-rail">
+    <div className="subject-rail-title">科目</div>
+    <div className="subject-rail-list" role="tablist">
+     {subjectOptions.map(item=><button className={subject===item.id?'active':''} key={item.id} onClick={()=>setSubject(item.id)} role="tab"><span>{item.label}</span></button>)}
+    </div>
+    <button className="subject-add-button" onClick={()=>setSubjectDrawer(true)} type="button"><CirclePlus size={17}/>新增科目</button>
+   </aside>
    <div className="subject-plan-body">
     <div className="subject-plan-title-row">
      <h1 className="subject-plan-title">{currentSubjectLabel}长期学习事项</h1>
@@ -251,6 +271,7 @@ export function SubjectPlanPage({studentId,onOpenWeeklyPlan}:{studentId:number;o
    </div>
   </div>
 
+  {subjectDrawer&&<Drawer onClose={()=>setSubjectDrawer(false)}><form className="side-drawer subject-create-drawer" onSubmit={addSubject}><div className="drawer-head"><div><span className="eyebrow">New Subject</span><h2>新增科目</h2></div><button className="icon-button" onClick={()=>setSubjectDrawer(false)} title="关闭" type="button"><X size={20}/></button></div><div className="drawer-body"><label>科目名称<input aria-label="科目名称" autoFocus required placeholder="例如：化学、生物、地理" value={newSubjectName} onChange={event=>setNewSubjectName(event.target.value)}/></label><p className="drawer-help">新增后会自动建立“综合学习”方向，可继续添加教材和规划事项。</p></div><div className="drawer-actions"><button className="secondary" onClick={()=>setSubjectDrawer(false)} type="button">取消</button><button className="primary" type="submit">保存科目</button></div></form></Drawer>}
   {goalDrawer&&plan&&<Drawer onClose={()=>setGoalDrawer(false)}><form className="side-drawer" onSubmit={saveGoal}><div className="drawer-head"><div><span className="eyebrow">Subject Goal</span><h2>设置科目总目标</h2></div><button className="icon-button" onClick={()=>setGoalDrawer(false)} title="关闭" type="button"><X size={20}/></button></div><div className="drawer-body"><label>目标说明<textarea autoFocus rows={6} placeholder="说明这个科目本阶段要达到的总体目标" value={plan.goal.narrative} onChange={event=>setPlan({...plan,goal:{...plan.goal,narrative:event.target.value}})}/></label><div className="form-row"><label>当前分<input aria-label="当前分" type="number" value={plan.goal.currentScore??''} onChange={event=>setPlan({...plan,goal:{...plan.goal,currentScore:event.target.value===''?null:Number(event.target.value)}})}/></label><label>目标分<input aria-label="目标分" type="number" value={plan.goal.targetScore??''} onChange={event=>setPlan({...plan,goal:{...plan.goal,targetScore:event.target.value===''?null:Number(event.target.value)}})}/></label></div><label>目标日期<DateField allowEmpty ariaLabel="目标日期" value={plan.goal.targetDate??''} onChange={value=>setPlan({...plan,goal:{...plan.goal,targetDate:value||null}})}/></label></div><div className="drawer-actions"><button className="secondary" onClick={()=>setGoalDrawer(false)} type="button">取消</button><button className="primary" type="submit">保存目标</button></div></form></Drawer>}
 
   {itemDraft&&(()=>{

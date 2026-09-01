@@ -52,7 +52,8 @@
 .status-board-column{min-height:0;height:100%;border:1px solid #e1e7ea;border-radius:10px;background:#f7f9fa;display:flex;flex-direction:column;overflow:hidden;transition:border-color .15s ease,background-color .15s ease,box-shadow .15s ease}
 .status-board-column.drop-active{border-color:#2b8175;background:#eef7f4;box-shadow:inset 0 0 0 1px #2b8175}
 .status-board-column>header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-bottom:1px solid #e5eaed;background:#e8ecee;flex-shrink:0}
-.status-board-column>header em{font-style:normal;color:#5f6f78;font-size:12px;font-weight:800}
+.status-board-column>header .execution-status{font-size:14px;font-weight:800}
+.status-board-column>header em{font-style:normal;color:#5f6f78;font-size:13px;font-weight:800}
 .status-board-list{display:grid;gap:8px;padding:10px;align-content:start;flex:1;min-height:0;overflow-x:hidden;overflow-y:auto}
 .status-board-empty{padding:18px 10px;border:1px dashed #c9d5d1;border-radius:8px;text-align:center;color:#93a1a8;font-size:12px;background:rgba(255,255,255,.55)}
 .status-task-card{border:1px solid #dce4e8;border-radius:8px;background:#fff;padding:10px 11px;display:grid;gap:8px;cursor:grab;box-shadow:0 1px 2px rgba(23,40,48,.04)}
@@ -75,7 +76,7 @@
 .status-board-column.status-deferred>header{background:#efdfb8;border-bottom-color:#d4b76a}
 .status-board-column.status-deferred>header .execution-status{color:#6e4f12}
 .status-board-column.status-deferred>header em{color:#8a6419}
-.week-plan-body:has(.status-board){display:flex;flex-direction:column;overflow:hidden;padding-bottom:16px}
+.week-plan-body:has(.status-board){display:flex;flex-direction:column;overflow:hidden;padding-bottom:5px}
 .week-plan-body:has(.status-board) .week-day-panel{flex:1;min-height:0;margin-bottom:0;display:flex;flex-direction:column}
 .week-plan-body:has(.status-board) .week-day-overview-head,
 .week-plan-body:has(.status-board) .week-task-filters{flex-shrink:0}
