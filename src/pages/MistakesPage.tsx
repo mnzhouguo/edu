@@ -1,10 +1,12 @@
 import { useEffect,useRef,useState } from 'react';
 import { CirclePlus,X } from 'lucide-react';
 import { api } from '../api';
-import { mistakeReasons,redoStatuses,subjectLabel,subjects,type Mistake,type Subject } from '../types';
+import { useSubjectCatalog } from '../subject-catalog';
+import { mistakeReasons,redoStatuses,type Mistake,type Subject } from '../types';
 
 const empty={subject:'math' as Subject,summary:'',reason:'concept',reasonNote:'',correctSolution:'',redoStatus:'not_redone'};
 export function MistakesPage({studentId}:{studentId:number}){
+ const{subjects,label:subjectLabel}=useSubjectCatalog();
  const[mistakes,setMistakes]=useState<Mistake[]>([]),[filter,setFilter]=useState<Subject|'all'>('all'),[form,setForm]=useState(empty),[files,setFiles]=useState<FileList|null>(null),[editing,setEditing]=useState<Mistake|null>(null),[modal,setModal]=useState(false),[error,setError]=useState('');
  const requestVersion=useRef(0);
  async function load(){const version=++requestVersion.current;const query=filter==='all'?'':`?subject=${filter}`;try{const result=await api<{mistakes:Mistake[]}>(`/api/students/${studentId}/mistakes${query}`);if(version===requestVersion.current)setMistakes(result.mistakes)}catch(reason){setError(reason instanceof Error?reason.message:'读取失败')}}

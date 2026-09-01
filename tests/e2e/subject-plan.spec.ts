@@ -26,41 +26,38 @@ test('adds recurring subject plan items directly in the list',async({page})=>{
  await expect(page.locator('.goal-metric.highlight')).toContainText('88');
  await expect(page.getByText('目标分',{exact:true})).toBeVisible();
 
- await page.getByRole('button',{name:'新增教材'}).click();
- await page.getByLabel('教材名称').fill('《一本阅读》');
- await page.getByLabel('知识方向').selectOption({label:'现代文阅读'});
- await page.getByRole('button',{name:'保存教材'}).click();
- await expect(page.getByRole('cell',{name:'《一本阅读》',exact:true})).toBeVisible();
- const materialRow=page.locator('.material-list-table tbody tr').filter({hasText:'《一本阅读》'});
- await materialRow.hover();
- await expect(materialRow.getByRole('button',{name:'编辑教材《一本阅读》'})).toBeVisible();
- await materialRow.getByRole('button',{name:'编辑教材《一本阅读》'}).click();
- await expect(page.getByRole('heading',{name:'编辑教材'})).toBeVisible();
+ const planTabs=page.getByRole('tablist',{name:'规划内容'});
+ await planTabs.getByRole('tab',{name:/^辅导资料/}).click();
+ await page.getByRole('button',{name:'暂无辅导资料，点击添加'}).click();
+ await page.getByLabel('资料名称').fill('《一本阅读》');
+ await page.getByRole('button',{name:'保存资料'}).click();
+ await expect(page.getByRole('heading',{name:'《一本阅读》',exact:true})).toBeVisible();
+ const materialCard=page.locator('.material-card').filter({hasText:'《一本阅读》'});
+ await materialCard.hover();
+ await expect(materialCard.getByRole('button',{name:'编辑辅导资料《一本阅读》'})).toBeVisible();
+ await materialCard.getByRole('button',{name:'编辑辅导资料《一本阅读》'}).click();
+ await expect(page.getByRole('heading',{name:'编辑辅导资料'})).toBeVisible();
  await page.getByLabel('用途说明').fill('现代文阅读专项与错题复盘');
- await page.getByRole('button',{name:'保存教材'}).click();
- await expect(page.getByRole('cell',{name:'现代文阅读专项与错题复盘'})).toBeVisible();
+ await page.getByRole('button',{name:'保存资料'}).click();
+ await expect(page.getByText('现代文阅读专项与错题复盘')).toBeVisible();
 
- await page.getByRole('button',{name:'新增事项'}).click();
+ await planTabs.getByRole('tab',{name:/^规划事项/}).click();
+ await page.getByRole('button',{name:'还没有规划事项，点击添加'}).click();
  await expect(page.getByRole('heading',{name:'新增规划事项'})).toBeVisible();
  await page.getByLabel('事项名称').fill('一本阅读');
  await page.getByLabel('执行频率').selectOption({label:'每两天'});
- await page.getByLabel('使用教材').selectOption({label:'《一本阅读》'});
+ await page.getByLabel('辅导资料').selectOption({label:'《一本阅读》'});
  await page.getByLabel('每次时长').fill('25');
  await page.getByLabel('总分').fill('10');
- await page.getByLabel('字迹名称').fill('字迹');
- await page.getByLabel('字迹满分').fill('5');
- await page.getByLabel('字迹档位说明').nth(0).fill('字迹优美');
- await page.getByLabel('字迹档位得分').nth(0).fill('5');
- await page.getByLabel('字迹档位说明').nth(1).fill('不够工整');
- await page.getByLabel('字迹档位得分').nth(1).fill('3');
- await page.getByLabel('字迹档位说明').nth(2).fill('非常潦草');
- await page.getByLabel('字迹档位得分').nth(2).fill('0');
- await page.getByLabel('正确率名称').fill('正确率');
- await page.getByLabel('正确率满分').fill('5');
+ await expect(page.getByLabel('字迹与过程名称')).toHaveValue('字迹与过程');
+ await expect(page.getByLabel('字迹与过程满分')).toHaveValue('4');
+ await expect(page.getByLabel('专注度满分')).toHaveValue('3');
+ await expect(page.getByLabel('正确率满分')).toHaveValue('3');
  await page.getByRole('button',{name:'保存事项'}).click();
  await expect(page.getByRole('cell',{name:'一本阅读',exact:true})).toBeVisible();
  await expect(page.getByRole('cell',{name:'每两天'})).toBeVisible();
- await expect(page.getByText('字迹优美')).toBeVisible();
+ await expect(page.getByText('字迹与过程')).toBeVisible();
+ await expect(page.getByText('专注度')).toBeVisible();
  await expect(page.getByText('正确率').first()).toBeVisible();
 
  const planRow=page.locator('.plan-items-table tbody tr').filter({hasText:'一本阅读'});
@@ -71,6 +68,11 @@ test('adds recurring subject plan items directly in the list',async({page})=>{
  await page.getByLabel('总分').fill('10');
  await page.getByRole('button',{name:'保存事项'}).click();
  await expect(page.getByRole('cell',{name:'10'})).toBeVisible();
+
+ await page.getByRole('button',{name:'生成周计划'}).click();
+ await expect(page.getByRole('tablist',{name:'本周日期'})).toBeVisible();
+ await page.getByRole('tab',{name:/周一/}).click();
+ await expect(page.getByText('一本阅读').first()).toBeVisible();
 });
 
 

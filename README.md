@@ -22,9 +22,41 @@ npm run dev
 
 - `DATABASE_PATH`：SQLite 文件路径
 - `PHOTO_LIBRARY`：Photo Library 目录
-- `PORT`：API 端口，默认 `3001`
+- `PORT`：API 端口，默认 `3001`（被占用时会自动改用空闲端口）
+- `WEB_ROOT`：可选，已构建前端目录；未设置时若存在 `dist/index.html` 会自动托管
 
 首次启动会自动创建目录并执行全部 SQLite 迁移。
+
+## 安装包
+
+Windows 安装程序把前端和本地后端包进同一个桌面应用，用户不需要单独安装 Node.js。安装后从桌面或开始菜单打开「成长计划」。
+
+```bash
+npm install
+npm run dist:win
+```
+
+生成的安装文件在 `release/ChengZhangPlan-Setup-1.0.0.exe`。安装包数据目录：
+
+| 路径 | 内容 |
+| --- | --- |
+| `%APPDATA%\成长计划\edu.sqlite` | Local Database |
+| `%APPDATA%\成长计划\photos\` | Photo Library |
+
+开发时也可以直接跑桌面外壳（会先编译前端和主进程）：
+
+```bash
+npm run desktop
+```
+
+生产模式的 Node 入口同样可以在同一端口托管已构建的前端：`npm run build:web && npm start`，然后打开 `http://127.0.0.1:3001`。
+
+若下载 Electron 失败（常见于访问 GitHub 较慢的网络），先设置镜像再打包：
+
+```powershell
+$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'
+npm run dist:win
+```
 
 ## 检查
 

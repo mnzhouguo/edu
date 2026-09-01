@@ -1,0 +1,31 @@
+appId: com.chengzhang.plan
+productName: 成长计划
+copyright: Copyright © 成长计划
+electronDist: node_modules/electron/dist
+asar: true
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**/*
+  - out/**/*
+  - build/icon.png
+extraMetadata:
+  main: out/desktop/main.js
+win:
+  executableName: ChengZhangPlan
+  icon: build/icon.png
+  target:
+    - nsis
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: 成长计划
+  uninstallDisplayName: 成长计划
+  artifactName: ChengZhangPlan-Setup-${version}.exe
+  installerLanguages:
+    - zh_CN
+    - en_US

@@ -5,12 +5,16 @@ This context describes the domain language for a family learning progress and re
 ## Language
 
 **Reward**:
-A configurable item that can be redeemed with points, such as cash, game time, movies, gifts, or family activities.
+A configurable item that can be redeemed with points, such as cash, game time, movies, gifts, or family activities. The Reward catalog is shared across all Student Profiles in the household; editing or deleting a Reward affects every child. An optional Reward Image is a tempting photo the parent attaches so the child can see what they are working toward.
 _Avoid_: Prize, benefit
 
 **Points**:
-The numeric learning currency earned from evaluated study tasks and spent on rewards.
+The numeric learning currency earned from evaluated study tasks and spent on rewards. Parents may also record Extra Channel Points for recognition outside study tasks, such as teacher praise in a class WeChat group.
 _Avoid_: Coins, score
+
+**Extra Channel Points**:
+A parent-recorded Points earn that did not come from completing a Study Task, with a required reason note. Examples include teacher praise, classroom performance, or other family-recognized achievements. These entries appear in the Points earn history on the Points Exchange page.
+_Avoid_: Manual backfill, makeup points, fake task completion
 
 **Subject Weight**:
 The fixed importance multiplier or point bias assigned to a subject, with Chinese, math, English, and physics weighted higher than history in the first version.
@@ -29,16 +33,12 @@ The measurable condition that tells the parent whether a study task was actually
 _Avoid_: Requirement, acceptance criteria
 
 **Evaluation Rubric**:
-The scored breakdown of a Completion Standard: one or more Evaluation Dimensions whose max points sum to at most the item's base Points, used later to award earned Points.
+The scored breakdown of a Completion Standard into Evaluation Dimensions; each dimension carries one max score (typically 字迹与过程 40%, 专注度 30%, 正确率 30% of base Points).
 _Avoid_: Grading form, checklist, scoring sheet
 
 **Evaluation Dimension**:
-One scored aspect inside an Evaluation Rubric, such as handwriting or accuracy, with its own max points and Rubric Levels.
-_Avoid_: Criterion group, category, metric
-
-**Rubric Level**:
-A selectable quality band inside an Evaluation Dimension, carrying a point value at or below that dimension's max, such as “字迹优美 / 5分”.
-_Avoid_: Grade option, score choice, rating star
+One scored aspect inside an Evaluation Rubric, such as handwriting-and-process, focus, or accuracy, with a single max score used when awarding Points.
+_Avoid_: Criterion group, category, metric, Rubric Level
 
 **Accuracy Band**:
 An approximate correctness level selected during evaluation, such as 60%, 80%, or 90%, rather than an exact automatically calculated rate.
@@ -81,8 +81,8 @@ The parent-configured weekly frequency and suggested duration for one enabled Kn
 _Avoid_: Priority, weight, difficulty
 
 **Study Material**:
-A parent-maintained named resource attached to a Knowledge Area, such as a workbook, course, or handout title. Name is required; type and note are optional. It is planning context for generated tasks, not Photo Evidence and not an auto-fetched web library.
-_Avoid_: Photo Evidence, resource library, attachment, link dump
+A parent-maintained named tutoring resource attached to a subject plan, such as a workbook or handout title. Shown in the product UI as 辅导资料; name is required and a usage note is optional.
+_Avoid_: Photo Evidence, resource library, attachment, link dump, 教材类型, 知识方向
 
 **Material Planning Matrix**:
 A subject weekly-planning view whose columns are enabled Study Materials and whose rows are weekdays. Each cell contains zero or more Study Tasks linked to that material, and each row shows the automatically calculated subject duration total. The first product use is Chinese.
@@ -96,7 +96,7 @@ _Avoid_: Weekly Plan, Task Template, recurring calendar event
 Removing a Study Material from future planning without deleting its historical Study Tasks. A material with no historical tasks may be deleted; a referenced material must be deactivated.
 _Avoid_: Material deletion, archive task
 **Subject Plan Generation**:
-The explicit parent action that creates missing Weekly Plan Study Tasks from enabled Knowledge Areas for a chosen week. It fills gaps only: existing tasks from an area are kept, parent edits are not overwritten, and hand-added temporary tasks are left alone. It does not write Daily Plan rows directly.
+The explicit parent action that creates Weekly Plan Study Tasks from active Subject Plan Items (or enabled Knowledge Areas when no items exist) for a chosen week. Default API behavior fills gaps only. When invoked with replace mode from the product UI, incomplete Weekly Plan rows for that student are cleared first, then the week is regenerated. Completed Weekly Plan tasks and their earned Points are kept and are not duplicated for the same Subject Plan Item and weekday. It does not write Daily Plan rows directly.
 _Avoid_: Auto-sync, silent rewrite, daily generation
 
 **Weekly Plan**:
@@ -136,7 +136,7 @@ A categorized explanation for why a question was answered incorrectly, selected 
 _Avoid_: Error type, failure reason
 
 **Parent Dashboard**:
-The parent's home view focused on today's execution, this week's trend, and the current points balance.
+The parent's home view of daily and weekly earned points and task completion, with comparison to yesterday and last week, this week's grouped bar charts for task totals versus completed counts and base Points versus earned Points, plus this calendar month from the 1st through the selected date for completion rate and earned Points as line charts.
 _Avoid_: Admin panel, report page
 
 **Estimated Points**:
@@ -168,7 +168,7 @@ The first-version access model where the app opens directly without login or pas
 _Avoid_: Authentication, account system
 
 **Student Profile**:
-A lightweight record for one child whose plans, tasks, points, mistakes, rewards, and exam results are managed separately.
+A lightweight record for one child whose plans, tasks, points, mistakes, redemptions, and exam results are managed separately. The Reward catalog is shared across children. An optional circular Avatar photo is shown in the top Active Student control.
 _Avoid_: Student account, login user
 
 **Active Student**:
@@ -206,6 +206,10 @@ _Avoid_: Manual reminder, ordinary task
 A submitted or evaluated study task retained for historical accuracy but removed from active work views.
 _Avoid_: Deleted task, canceled task
 
+**Weekly Task Execution Status**:
+The parent-managed outcome of one Weekly Plan Study Task for its scheduled day: 未开始 (default), 已完成, 已作废, or 已延期. Completing a task requires scoring each Evaluation Dimension and recording actual duration; earned Points equal the sum of dimension scores and may exceed the task's standard base Points or dimension reference maxima (bonus allowed). Scores must be non-negative integers. A completed Weekly Plan Study Task cannot be deleted. Deleting an incomplete task also removes its Points ledger rows so remaining tasks, the Points Balance, and total earned Points stay aligned.
+_Avoid_: Using Daily Plan planned/submitted/evaluated labels on weekly plan rows, checkbox-only done
+
 **Bonus Point Cap**:
 The maximum additional behavior-based points a student can earn in one day; base task points are not capped.
 _Avoid_: Daily point cap
@@ -226,9 +230,21 @@ _Avoid_: Final status, self grade
 A child's request to spend points on a reward, which only deducts points after parent approval.
 _Avoid_: Purchase, order
 
+**Redemption Quantity**:
+How many units of a Reward are redeemed in one request. Points spent equal the Reward's required Points times this quantity.
+_Avoid_: Count, amount (alone)
+
 **Exam Result**:
 A recorded school test result for one or more subjects, used to observe score trends over time.
 _Avoid_: Report card
+
+**Semester**:
+The parent-configured school-term window for one student, defined by a start date and end date. Used to count natural weeks (Monday–Sunday) and label Weekly Plan views as 开学第 N 周.
+_Avoid_: Academic year alone, calendar month, stage
+
+**Semester Week**:
+The 1-based index of the Monday-start week within the Semester that contains the Weekly Plan's weekStart. Total semester weeks are counted from the Monday of the start week through the Monday of the end week.
+_Avoid_: ISO week number alone, teaching week without semester bounds
 
 
 

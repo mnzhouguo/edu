@@ -1,0 +1,73 @@
+.execution-status{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;white-space:nowrap}
+.execution-status.not_started{color:#80909a}
+.execution-status.completed{color:#17685d}
+.execution-status.voided{color:#9f2f2f}
+.execution-status.deferred{color:#8a6419}
+.execution-table th:nth-child(1),.execution-table td:nth-child(1){width:6.5rem}
+.execution-table th:nth-child(2),.execution-table td:nth-child(2){width:4.5rem}
+.execution-table th:nth-child(4),.execution-table td:nth-child(4),.execution-table th:nth-child(5),.execution-table td:nth-child(5){width:5rem;white-space:nowrap}
+.execution-table th:nth-child(6),.execution-table td:nth-child(6),.execution-table th:nth-child(7),.execution-table td:nth-child(7){width:5.5rem;white-space:nowrap;text-align:center}
+.execution-table th:nth-child(8),.execution-table td:nth-child(8){width:10.5rem;white-space:nowrap}
+.row-actions{display:flex;justify-content:flex-end;align-items:center;gap:4px;min-height:26px}
+.status-actions{display:flex;justify-content:flex-end;gap:4px}
+.status-actions .icon-button{width:26px;height:26px;border-radius:5px;background:#fff}
+.week-day-table .hover-actions{opacity:0;transform:translateX(4px);pointer-events:none}
+.week-day-table .interactive-row:hover .hover-actions,.week-day-table .interactive-row:focus-within .hover-actions{opacity:1;transform:translateX(0);pointer-events:auto}
+.rubric-simple-row.score-row{grid-template-columns:minmax(0,1fr) 48px 72px}
+.week-day-heading{display:flex;align-items:baseline;gap:10px;min-width:0;flex-wrap:wrap}
+.week-day-heading .week-day-label{font-size:18px;font-weight:800;color:#17332d}
+.week-day-heading .panel-hint{font-size:13px;color:#6f8790}
+.week-plan-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:0 0 14px}
+.week-plan-head .subject-plan-title{margin:0}
+.week-overview{display:flex;flex-wrap:wrap;gap:8px;flex:1;justify-content:flex-end;min-width:0}
+.week-overview-metric{min-width:76px;padding:8px 12px;border:1px solid #d8e4e0;border-radius:8px;background:#f4f9f7;display:grid;gap:2px;text-align:center}
+.week-overview-metric span{color:#6a7c75;font-size:11px;font-weight:700}
+.week-overview-metric strong{color:#17332d;font-size:18px;line-height:1.1;font-weight:800;font-variant-numeric:tabular-nums}
+.week-overview-metric.highlight{border-color:#2b8175;background:#e5f2ee}
+.week-overview-metric.highlight strong{color:#17685d}
+.week-day-overview-head{display:flex;align-items:center;gap:12px}
+.week-day-overview-head .week-day-label{font-size:22px;font-weight:800;color:#17332d;flex-shrink:0;display:inline-flex;align-items:baseline;gap:10px}
+.week-day-overview-head .week-day-date{font-size:16px;font-weight:700;color:#5f7580}
+.week-day-overview-head .icon-button{flex-shrink:0}
+.week-day-tabs button strong{display:inline-flex;align-items:center;gap:6px}
+.week-day-tabs button.is-today{position:relative;border-color:#2b8175}
+.week-day-tabs button.is-today:not(.active){background:#f3faf8}
+.week-day-tabs button .today-badge{position:absolute;top:6px;right:6px;z-index:1;display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:999px;background:#17685d;color:#fff;font-size:10px;font-weight:800;font-style:normal;letter-spacing:.02em;line-height:1;pointer-events:none}
+.week-day-tabs button.active .today-badge{background:#fff;color:#17685d}
+.week-day-table tr.status-voided td{color:#8a969e}
+.week-day-table tr.status-voided td strong{text-decoration:line-through;color:#8a969e}
+.week-day-table tr.status-completed td:nth-child(7){color:#17685d;font-weight:700}
+.week-task-filters{display:grid;gap:8px;padding:12px 18px;border-bottom:1px solid #edf1f3;background:#fbfcfc}
+.week-filter-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+.week-filter-row>span{flex-shrink:0;width:2.5rem;color:#6f8790;font-size:12px;font-weight:700}
+.week-filter-row button{height:30px;padding:0 11px;border:1px solid #d7e1e6;border-radius:999px;background:#fff;color:#51656f;font-size:12px;font-weight:700}
+.week-filter-row button:hover{border-color:#2b8175;color:#17685d}
+.week-filter-row button.active{border-color:#2b8175;background:#e8f4f1;color:#17685d}
+.view-mode-switch{display:inline-flex;gap:2px;padding:3px;border:1px solid #d7e1e6;border-radius:8px;background:#f4f7f8;flex-shrink:0}
+.view-mode-switch button{height:30px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:#617680;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700}
+.view-mode-switch button.active{background:#fff;color:#17685d;box-shadow:0 1px 2px rgba(23,40,48,.08)}
+.status-board{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:10px;padding:14px;min-height:0;flex:1;align-items:stretch;overflow:hidden}
+.status-board-column{min-height:0;height:100%;border:1px solid #e1e7ea;border-radius:10px;background:#f7f9fa;display:flex;flex-direction:column;overflow:hidden;transition:border-color .15s ease,background-color .15s ease,box-shadow .15s ease}
+.status-board-column.drop-active{border-color:#2b8175;background:#eef7f4;box-shadow:inset 0 0 0 1px #2b8175}
+.status-board-column>header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-bottom:1px solid #e5eaed;background:#fff;flex-shrink:0}
+.status-board-column>header em{font-style:normal;color:#80909a;font-size:12px;font-weight:700}
+.status-board-list{display:grid;gap:8px;padding:10px;align-content:start;flex:1;min-height:0;overflow-x:hidden;overflow-y:auto}
+.status-board-empty{padding:18px 10px;border:1px dashed #c9d5d1;border-radius:8px;text-align:center;color:#93a1a8;font-size:12px;background:rgba(255,255,255,.55)}
+.status-task-card{border:1px solid #dce4e8;border-radius:8px;background:#fff;padding:10px 11px;display:grid;gap:8px;cursor:grab;box-shadow:0 1px 2px rgba(23,40,48,.04)}
+.status-task-card:active{cursor:grabbing}
+.status-task-card.dragging{opacity:.45}
+.status-task-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.status-task-actions{display:flex;gap:2px;opacity:0;transition:opacity .15s ease}
+.status-task-card:hover .status-task-actions{opacity:1}
+.status-task-actions .icon-button{width:24px;height:24px}
+.status-task-card strong{font-size:13px;line-height:1.4;color:#1d2d35}
+.status-task-meta{display:flex;justify-content:space-between;gap:8px;color:#718089;font-size:11px;font-weight:600}
+.status-board-column.status-completed>header{border-bottom-color:#cfe4de}
+.status-board-column.status-voided>header{border-bottom-color:#ecd7d5}
+.status-board-column.status-deferred>header{border-bottom-color:#eadfc8}
+.week-plan-body:has(.status-board){display:flex;flex-direction:column;overflow:hidden;padding-bottom:16px}
+.week-plan-body:has(.status-board) .week-day-panel{flex:1;min-height:0;margin-bottom:0;display:flex;flex-direction:column}
+.week-plan-body:has(.status-board) .week-day-overview-head,
+.week-plan-body:has(.status-board) .week-task-filters{flex-shrink:0}
+@media(max-width:1100px){.status-board{grid-template-columns:repeat(2,minmax(180px,1fr));overflow:auto}}
+@media(max-width:720px){.week-day-overview-head{flex-wrap:wrap}.week-overview{justify-content:flex-start;width:100%;order:3}.view-mode-switch{order:2}.status-board{grid-template-columns:1fr;overflow:auto}}

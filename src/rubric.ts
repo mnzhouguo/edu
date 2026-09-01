@@ -1,34 +1,35 @@
-export type RubricLevel={id:string;label:string;points:number};
-export type RubricDimension={id:string;name:string;maxPoints:number;levels:RubricLevel[]};
+export type RubricDimension={id:string;name:string;weightPercent:number;maxPoints:number};
 export type EvaluationRubric={dimensions:RubricDimension[]};
+
+export const defaultDimensionWeights=[{name:'字迹与过程',weightPercent:40},{name:'专注度',weightPercent:30},{name:'正确率',weightPercent:30}] as const;
+
+export function allocateByWeight(totalPoints:number,weights:number[]){
+ if(!weights.length)return [];
+ const safeTotal=Math.max(0,Math.floor(totalPoints));
+ const raw=weights.map(weight=>safeTotal*weight/100);
+ const floors=raw.map(Math.floor);
+ let remain=safeTotal-floors.reduce((sum,value)=>sum+value,0);
+ const order=raw.map((value,index)=>({index,fraction:value-floors[index]})).sort((a,b)=>b.fraction-a.fraction);
+ const points=[...floors];
+ for(let step=0;step<remain;step+=1)points[order[step%order.length].index]+=1;
+ return points;
+}
 
 export function allocatedPoints(rubric:EvaluationRubric){
  return rubric.dimensions.reduce((sum,dimension)=>sum+dimension.maxPoints,0);
 }
 
 export function summarizeRubric(rubric:EvaluationRubric){
- return rubric.dimensions.map(dimension=>{
-  const levels=dimension.levels.map(level=>`${level.label}${level.points}分`).join(' / ');
-  return `${dimension.name}（${dimension.maxPoints}分）：${levels}`;
- }).join('；');
+ return rubric.dimensions.map(dimension=>`${dimension.name} ${dimension.maxPoints}分`).join('；');
 }
 
 export function validateRubricAgainstTotal(rubric:EvaluationRubric,totalPoints:number){
  if(!Number.isInteger(totalPoints)||totalPoints<0)return '总分无效';
  const allocated=allocatedPoints(rubric);
  if(allocated>totalPoints)return `评价维度合计 ${allocated} 分，不能超过总分 ${totalPoints} 分`;
- if(!rubric.dimensions.length)return '请至少添加一个评价维度';
- for(const dimension of rubric.dimensions){
-  if(!dimension.name.trim())return '请填写维度名称';
-  if(!Number.isInteger(dimension.maxPoints)||dimension.maxPoints<0)return '维度满分无效';
-  if(!dimension.levels.length)return `请为「${dimension.name||'未命名维度'}」添加档位`;
-  if(!dimension.levels.some(level=>level.points===dimension.maxPoints))return `「${dimension.name}」需要包含一个满分档位`;
-  for(const level of dimension.levels){
-   if(!level.label.trim())return '请填写档位说明';
-   if(!Number.isInteger(level.points)||level.points<0||level.points>dimension.maxPoints)return `「${dimension.name}」档位分不能超过维度满分`;
-  }
- }
- if(allocated===0)return '请至少配置一个有分值的评价维度';
+ if(!rubric.dimensions.length)return '请至少配置一个评价维度';
+ if(rubric.dimensions.some(dimension=>!dimension.name.trim()))return '请填写维度名称';
+ if(allocated===0&&totalPoints>0)return '请为评价维度分配分值';
  return null;
 }
 
@@ -36,39 +37,29 @@ let rubricSeq=0;
 export function newRubricId(prefix:string){rubricSeq+=1;return `${prefix}_${Date.now()}_${rubricSeq}`}
 
 export function defaultRubric(totalPoints=10):EvaluationRubric{
- const handwriting=Math.min(5,Math.max(0,Math.floor(totalPoints/2)));
- const accuracy=Math.max(0,totalPoints-handwriting);
- const dimensions:RubricDimension[]=[];
- if(handwriting>0)dimensions.push({
-  id:newRubricId('dim'),name:'字迹',maxPoints:handwriting,
-  levels:[
-   {id:newRubricId('lv'),label:'字迹优美',points:handwriting},
-   {id:newRubricId('lv'),label:'不够工整',points:Math.max(0,Math.round(handwriting*0.6))},
-   {id:newRubricId('lv'),label:'非常潦草',points:0},
-  ],
- });
- if(accuracy>0)dimensions.push({
-  id:newRubricId('dim'),name:'正确率',maxPoints:accuracy,
-  levels:[
-   {id:newRubricId('lv'),label:'正确率高',points:accuracy},
-   {id:newRubricId('lv'),label:'基本达标',points:Math.max(0,Math.round(accuracy*0.6))},
-   {id:newRubricId('lv'),label:'未达标',points:0},
-  ],
- });
- if(!dimensions.length)dimensions.push({
-  id:newRubricId('dim'),name:'完成质量',maxPoints:0,
-  levels:[{id:newRubricId('lv'),label:'按要求完成',points:0}],
- });
- return {dimensions};
+ const points=allocateByWeight(totalPoints,defaultDimensionWeights.map(item=>item.weightPercent));
+ return {dimensions:defaultDimensionWeights.map((item,index)=>({
+  id:newRubricId('dim'),
+  name:item.name,
+  weightPercent:item.weightPercent,
+  maxPoints:points[index]??0,
+ }))};
 }
 
-export function rubricFromLegacy(text:string,totalPoints:number):EvaluationRubric{
- const max=Math.max(0,totalPoints);
- return {dimensions:[{
-  id:newRubricId('dim'),name:text.trim()?`完成质量`:'完成质量',maxPoints:max,
-  levels:[
-   {id:newRubricId('lv'),label:'达标',points:max},
-   {id:newRubricId('lv'),label:'未达标',points:0},
-  ],
- }]};
+export function rescaleRubric(rubric:EvaluationRubric,totalPoints:number):EvaluationRubric{
+ const relative=rubric.dimensions.map(dimension=>dimension.maxPoints||dimension.weightPercent||0);
+ const sum=relative.reduce((total,value)=>total+value,0);
+ const weights=sum>0
+  ?relative.map(value=>value*100/sum)
+  :rubric.dimensions.map(()=>100/Math.max(1,rubric.dimensions.length));
+ const points=allocateByWeight(totalPoints,weights);
+ return {dimensions:rubric.dimensions.map((dimension,index)=>({
+  ...dimension,
+  maxPoints:points[index]??0,
+  weightPercent:Math.round(weights[index]??0),
+ }))};
+}
+
+export function rubricFromLegacy(_text:string,totalPoints:number):EvaluationRubric{
+ return defaultRubric(totalPoints);
 }

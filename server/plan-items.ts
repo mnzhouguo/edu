@@ -55,7 +55,7 @@ export function generatePlanItemTasks(db:DatabaseSync,studentId:number,weekStart
   const marker=`plan_item:${item.id}`;
   const existing=listWeeklyTasks(db,studentId,weekStart).filter(task=>task.sourceKnowledgeArea===marker);
   const existingDays=new Set(existing.map(task=>task.weekday));
-  for(const weekday of cadenceDays(item.cadence as PlanCadence,item.weekdays).filter(day=>!existingDays.has(day))){const maxOrder=Math.max(0,...listWeeklyTasks(db,studentId,weekStart).filter(task=>task.weekday===weekday).map(task=>task.taskOrder));createWeeklyTask(db,studentId,{weekStart,weekday,subject,content:item.materialName?`${item.materialName}：${item.name}`:item.name,completionStandard:item.completionStandard,suggestedDuration:item.suggestedDuration,basePoints:item.basePoints,taskOrder:maxOrder+1,sourceKnowledgeArea:marker})}
+  for(const weekday of cadenceDays(item.cadence as PlanCadence,item.weekdays).filter(day=>!existingDays.has(day))){const maxOrder=Math.max(0,...listWeeklyTasks(db,studentId,weekStart).filter(task=>task.weekday===weekday).map(task=>task.taskOrder));createWeeklyTask(db,studentId,{weekStart,weekday,subject,content:item.materialName?`${item.materialName}：${item.name}`:item.name,completionStandard:item.completionStandard,suggestedDuration:item.suggestedDuration,basePoints:item.basePoints,taskOrder:maxOrder+1,sourceKnowledgeArea:marker,evaluationRubric:item.evaluationRubric})}
  }}
  return listWeeklyTasks(db,studentId,weekStart);
 }

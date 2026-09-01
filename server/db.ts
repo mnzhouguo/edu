@@ -1,9 +1,10 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { purgeOrphanWeeklyTaskLedger } from './ledger.js';
 
-export type StudentProfile={id:number;name:string;grade:string;school:string;currentGoal:string;createdAt:string;updatedAt:string};
-export type StudentInput=Pick<StudentProfile,'name'|'grade'|'school'|'currentGoal'>;
+export type StudentProfile={id:number;name:string;grade:string;school:string;currentGoal:string;semesterStart:string|null;semesterEnd:string|null;hasAvatar:boolean;createdAt:string;updatedAt:string};
+export type StudentInput=Pick<StudentProfile,'name'|'grade'|'school'|'currentGoal'|'semesterStart'|'semesterEnd'>;
 type Migration={version:number;transactional?:boolean;up:(db:DatabaseSync)=>void};
 
 const migrations:Migration[]=[
@@ -146,16 +147,52 @@ const migrations:Migration[]=[
   CREATE INDEX subject_plan_items_student_subject ON subject_plan_items(student_id,subject,sort_order);
   PRAGMA foreign_keys=ON;`)
  }},
- {version:12,up(db){db.exec(`ALTER TABLE subject_plan_items ADD COLUMN evaluation_rubric TEXT`)}}
+ {version:12,up(db){db.exec(`ALTER TABLE subject_plan_items ADD COLUMN evaluation_rubric TEXT`)}},
+ {version:13,up(db){db.exec(`ALTER TABLE students ADD COLUMN semester_start TEXT;ALTER TABLE students ADD COLUMN semester_end TEXT`)}},
+ {version:14,up(db){db.exec(`ALTER TABLE weekly_tasks ADD COLUMN execution_status TEXT NOT NULL DEFAULT 'not_started';
+ ALTER TABLE weekly_tasks ADD COLUMN actual_duration INTEGER;
+ ALTER TABLE weekly_tasks ADD COLUMN earned_points INTEGER;
+ ALTER TABLE weekly_tasks ADD COLUMN dimension_scores TEXT;
+ ALTER TABLE weekly_tasks ADD COLUMN evaluation_rubric TEXT`)}},
+ {version:15,up(db){db.exec('ALTER TABLE students ADD COLUMN avatar_path TEXT')}},
+ {version:16,up(db){purgeOrphanWeeklyTaskLedger(db)}},
+ {version:17,up(db){db.exec('ALTER TABLE rewards ADD COLUMN image_path TEXT')}},
+ {version:18,up(db){db.exec('ALTER TABLE redemption_requests ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1')}},
+ {version:19,transactional:false,up(db){
+  db.exec(`PRAGMA foreign_keys=OFF;
+  CREATE TABLE rewards_new (
+   id INTEGER PRIMARY KEY AUTOINCREMENT,
+   name TEXT NOT NULL CHECK(length(trim(name)) > 0),
+   category TEXT NOT NULL CHECK(category IN ('cash','game_time','movie','activity','gift')),
+   required_points INTEGER NOT NULL CHECK(required_points > 0),
+   cash_amount INTEGER,
+   description TEXT NOT NULL DEFAULT '',
+   active INTEGER NOT NULL DEFAULT 1,
+   image_path TEXT,
+   created_at TEXT NOT NULL,
+   updated_at TEXT NOT NULL
+  );
+  INSERT INTO rewards_new(id,name,category,required_points,cash_amount,description,active,image_path,created_at,updated_at)
+   SELECT id,name,category,required_points,cash_amount,description,active,image_path,created_at,updated_at FROM rewards;
+  DROP TABLE rewards;
+  ALTER TABLE rewards_new RENAME TO rewards;
+  PRAGMA foreign_keys=ON;`);
+ }},
+ {version:20,up(db){db.exec("ALTER TABLE point_ledger ADD COLUMN note TEXT NOT NULL DEFAULT ''")}}
 ];
 
 export function openDatabase(filename:string){if(filename!==':memory:')mkdirSync(dirname(filename),{recursive:true});const db=new DatabaseSync(filename);db.exec('PRAGMA foreign_keys = ON;');migrate(db);return db}
 export function migrate(db:DatabaseSync){db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY,applied_at TEXT NOT NULL)');const applied=new Set(db.prepare('SELECT version FROM schema_migrations').all().map(row=>Number((row as {version:number}).version)));for(const migration of migrations){if(applied.has(migration.version))continue;if(migration.transactional===false){migration.up(db);db.prepare('INSERT INTO schema_migrations(version,applied_at) VALUES (?,?)').run(migration.version,new Date().toISOString());continue}db.exec('BEGIN');try{migration.up(db);db.prepare('INSERT INTO schema_migrations(version,applied_at) VALUES (?,?)').run(migration.version,new Date().toISOString());db.exec('COMMIT')}catch(error){db.exec('ROLLBACK');throw error}}}
-function mapStudent(row:Record<string,unknown>):StudentProfile{return{id:Number(row.id),name:String(row.name),grade:String(row.grade),school:String(row.school),currentGoal:String(row.current_goal),createdAt:String(row.created_at),updatedAt:String(row.updated_at)}}
+function mapStudent(row:Record<string,unknown>):StudentProfile{return{id:Number(row.id),name:String(row.name),grade:String(row.grade),school:String(row.school),currentGoal:String(row.current_goal),semesterStart:row.semester_start?String(row.semester_start):null,semesterEnd:row.semester_end?String(row.semester_end):null,hasAvatar:Boolean(row.avatar_path),createdAt:String(row.created_at),updatedAt:String(row.updated_at)}}
 export function listStudents(db:DatabaseSync){return db.prepare('SELECT * FROM students ORDER BY created_at,id').all().map(row=>mapStudent(row as Record<string,unknown>))}
 export function getStudent(db:DatabaseSync,id:number){const row=db.prepare('SELECT * FROM students WHERE id=?').get(id);return row?mapStudent(row as Record<string,unknown>):null}
-export function createStudent(db:DatabaseSync,input:StudentInput){const now=new Date().toISOString();const result=db.prepare('INSERT INTO students(name,grade,school,current_goal,created_at,updated_at) VALUES (?,?,?,?,?,?)').run(input.name.trim(),input.grade.trim(),input.school.trim(),input.currentGoal.trim(),now,now);return getStudent(db,Number(result.lastInsertRowid))!}
-export function updateStudent(db:DatabaseSync,id:number,input:StudentInput){const result=db.prepare('UPDATE students SET name=?,grade=?,school=?,current_goal=?,updated_at=? WHERE id=?').run(input.name.trim(),input.grade.trim(),input.school.trim(),input.currentGoal.trim(),new Date().toISOString(),id);return result.changes?getStudent(db,id):null}
+export function studentAvatarPath(db:DatabaseSync,id:number){const row=db.prepare('SELECT avatar_path FROM students WHERE id=?').get(id) as {avatar_path:string|null}|undefined;return row?row.avatar_path:undefined}
+export function setStudentAvatarPath(db:DatabaseSync,id:number,avatarPath:string|null){
+ const result=db.prepare('UPDATE students SET avatar_path=?,updated_at=? WHERE id=?').run(avatarPath,new Date().toISOString(),id);
+ return result.changes?getStudent(db,id):null;
+}
+export function createStudent(db:DatabaseSync,input:StudentInput){const now=new Date().toISOString();const result=db.prepare('INSERT INTO students(name,grade,school,current_goal,semester_start,semester_end,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)').run(input.name.trim(),input.grade.trim(),input.school.trim(),input.currentGoal.trim(),input.semesterStart,input.semesterEnd,now,now);return getStudent(db,Number(result.lastInsertRowid))!}
+export function updateStudent(db:DatabaseSync,id:number,input:StudentInput){const result=db.prepare('UPDATE students SET name=?,grade=?,school=?,current_goal=?,semester_start=?,semester_end=?,updated_at=? WHERE id=?').run(input.name.trim(),input.grade.trim(),input.school.trim(),input.currentGoal.trim(),input.semesterStart,input.semesterEnd,new Date().toISOString(),id);return result.changes?getStudent(db,id):null}
 
 
 

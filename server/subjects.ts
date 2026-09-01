@@ -4,8 +4,6 @@ export const defaultSubjects=[
  {id:'chinese',label:'语文'},
  {id:'math',label:'数学'},
  {id:'english',label:'英语'},
- {id:'physics',label:'物理'},
- {id:'history',label:'历史'},
 ] as const;
 
 export type StudentSubject={id:string;label:string;custom:boolean;sortOrder:number};
@@ -28,7 +26,7 @@ export function createStudentSubject(db:DatabaseSync,studentId:number,label:stri
  const duplicate=listStudentSubjects(db,studentId).find(item=>item.label===clean);
  if(duplicate)return duplicate;
  const subjectKey=`custom_${clean}`;
- const max=Number((db.prepare('SELECT COALESCE(MAX(sort_order),5) value FROM student_subjects WHERE student_id=?').get(studentId) as {value:number}).value);
+ const max=Number((db.prepare('SELECT COALESCE(MAX(sort_order),3) value FROM student_subjects WHERE student_id=?').get(studentId) as {value:number}).value);
  db.prepare('INSERT INTO student_subjects(student_id,subject_key,label,sort_order,created_at) VALUES (?,?,?,?,?)').run(studentId,subjectKey,clean,max+1,new Date().toISOString());
  return listStudentSubjects(db,studentId).find(item=>item.id===subjectKey)!;
 }

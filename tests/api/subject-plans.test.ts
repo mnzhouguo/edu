@@ -127,12 +127,49 @@ describe('Subject Plan and Subject Plan Generation',()=>{
  });
 
  it('stores evaluation rubrics for plan items and rejects dimensions over the total points',async()=>{
-  const rubric={dimensions:[{id:'handwriting',name:'字迹',maxPoints:5,levels:[{id:'good',label:'字迹优美',points:5},{id:'ok',label:'不够工整',points:3},{id:'bad',label:'非常潦草',points:0}]},{id:'accuracy',name:'正确率',maxPoints:5,levels:[{id:'high',label:'正确率高',points:5},{id:'mid',label:'基本达标',points:3},{id:'low',label:'未达标',points:0}]}]};
+  const rubric={dimensions:[{id:'handwriting',name:'字迹与过程',weightPercent:40,maxPoints:4},{id:'focus',name:'专注度',weightPercent:30,maxPoints:3},{id:'accuracy',name:'正确率',weightPercent:30,maxPoints:3}]};
   const created=(await request(app).post(`/api/students/${studentId}/subject-plans/chinese/items`).send({name:'作文誊写',cadence:'weekly',weekdays:[6],materialId:null,suggestedDuration:40,evaluationRubric:rubric,basePoints:10,active:true,sortOrder:1}).expect(201)).body.item;
   expect(created.evaluationRubric).toEqual(rubric);
-  expect(created.completionStandard).toContain('字迹（5分）');
+  expect(created.completionStandard).toContain('字迹与过程 4分');
   expect(created.basePoints).toBe(10);
-  await request(app).post(`/api/students/${studentId}/subject-plans/chinese/items`).send({name:'超分事项',cadence:'daily',weekdays:[],materialId:null,suggestedDuration:20,evaluationRubric:{dimensions:[{id:'a',name:'字迹',maxPoints:8,levels:[{id:'full',label:'优美',points:8},{id:'zero',label:'潦草',points:0}]}]},basePoints:5,active:true,sortOrder:2}).expect(400);
+  await request(app).post(`/api/students/${studentId}/subject-plans/chinese/items`).send({name:'超分事项',cadence:'daily',weekdays:[],materialId:null,suggestedDuration:20,evaluationRubric:{dimensions:[{id:'a',name:'字迹与过程',weightPercent:100,maxPoints:8}]},basePoints:5,active:true,sortOrder:2}).expect(400);
+ });
+
+ it('replace mode clears previous Weekly Plan tasks before regenerating',async()=>{
+  await request(app).post(`/api/students/${studentId}/weekly-tasks`).send({
+   weekStart:'2026-08-24',weekday:1,subject:'math',content:'旧的手工任务',completionStandard:'旧标准',suggestedDuration:15,basePoints:5,taskOrder:1
+  }).expect(201);
+  await request(app).post(`/api/students/${studentId}/subject-plans/chinese/items`).send({
+   name:'学校作业',cadence:'weekdays',weekdays:[],materialId:null,suggestedDuration:30,completionStandard:'完成并订正',basePoints:10,active:true,sortOrder:1
+  }).expect(201);
+  const generated=await request(app).post(`/api/students/${studentId}/subject-plans/generate`).send({weekStart:'2026-08-31',replace:true}).expect(200);
+  expect(generated.body.replaced).toBe(true);
+  expect(generated.body.tasks.some((task:{content:string})=>task.content==='旧的手工任务')).toBe(false);
+  expect(generated.body.tasks.filter((task:{content:string})=>task.content==='学校作业')).toHaveLength(5);
+  expect((await request(app).get(`/api/students/${studentId}/weekly-tasks?weekStart=2026-08-24`).expect(200)).body.tasks).toHaveLength(0);
+ });
+
+ it('replace mode keeps completed Weekly Plan tasks and their earned points',async()=>{
+  const previous=(await request(app).post(`/api/students/${studentId}/weekly-tasks`).send({
+   weekStart:'2026-08-24',weekday:1,subject:'math',content:'已完成的上周任务',completionStandard:'完成并订正',suggestedDuration:20,basePoints:8,taskOrder:1
+  }).expect(201)).body.task;
+  const previousScores=Object.fromEntries(previous.evaluationRubric.dimensions.map((dimension:{id:string;maxPoints:number})=>[dimension.id,dimension.maxPoints]));
+  const previousCompleted=(await request(app).post(`/api/students/${studentId}/weekly-tasks/${previous.id}/execution`).send({status:'completed',actualDuration:20,dimensionScores:previousScores}).expect(200)).body;
+  await request(app).post(`/api/students/${studentId}/subject-plans/chinese/items`).send({
+   name:'学校作业',cadence:'weekdays',weekdays:[],materialId:null,suggestedDuration:30,completionStandard:'完成并订正',basePoints:10,active:true,sortOrder:1
+  }).expect(201);
+  const first=(await request(app).post(`/api/students/${studentId}/subject-plans/generate`).send({weekStart:'2026-08-31'}).expect(200)).body.tasks as {id:number;weekday:number;content:string;evaluationRubric:{dimensions:{id:string;maxPoints:number}[]}}[];
+  const monday=first.find(task=>task.content==='学校作业'&&task.weekday===1)!;
+  const dimensionScores=Object.fromEntries(monday.evaluationRubric.dimensions.map(dimension=>[dimension.id,dimension.maxPoints]));
+  const completed=(await request(app).post(`/api/students/${studentId}/weekly-tasks/${monday.id}/execution`).send({status:'completed',actualDuration:30,dimensionScores}).expect(200)).body;
+  const replaced=await request(app).post(`/api/students/${studentId}/subject-plans/generate`).send({weekStart:'2026-08-31',replace:true}).expect(200);
+  const kept=replaced.body.tasks.find((task:{id:number})=>task.id===monday.id);
+  expect(kept).toMatchObject({executionStatus:'completed',earnedPoints:completed.task.earnedPoints,weekday:1,content:'学校作业'});
+  expect(replaced.body.tasks.filter((task:{content:string})=>task.content==='学校作业')).toHaveLength(5);
+  expect((await request(app).get(`/api/students/${studentId}/weekly-tasks?weekStart=2026-08-24`).expect(200)).body.tasks).toEqual([
+   expect.objectContaining({id:previous.id,executionStatus:'completed',earnedPoints:previousCompleted.task.earnedPoints,content:'已完成的上周任务'})
+  ]);
+  expect((await request(app).get(`/api/students/${studentId}/points`).expect(200)).body.balance).toBe(previousCompleted.task.earnedPoints+completed.task.earnedPoints);
  });
 });
 

@@ -1,12 +1,100 @@
-import { useEffect,useRef,useState } from 'react';import { ChevronLeft,ChevronRight,CirclePlus,Clock3,Pencil,Trash2,X } from 'lucide-react';import { api } from '../api';import { daysOfWeek,isoDate,mondayOf } from '../dates';import { subjectLabel,subjects,type Subject,type WeeklyTask } from '../types';
-function defaultPlanningWeek(){const today=new Date();if(today.getDay()===0){today.setDate(today.getDate()+1);return isoDate(today)}return mondayOf(isoDate(today))}
+import { useEffect,useMemo,useRef,useState } from 'react';
+import { ChevronLeft,ChevronRight } from 'lucide-react';
+import { api } from '../api';
+import { DayTaskWorkspace } from '../components/DayTaskWorkspace';
+import { daysOfWeek,defaultPlanningWeek,isoDate } from '../dates';
+import { chineseWeekLabel,semesterWeekInfo } from '../semester';
+import { useSubjectCatalog } from '../subject-catalog';
+import { type Student,type Subject,type WeeklyTask } from '../types';
 
-type TaskForm={weekday:number;subject:Subject;content:string;completionStandard:string;suggestedDuration:number;basePoints:number;taskOrder:number};const initial:TaskForm={weekday:1,subject:'chinese',content:'',completionStandard:'',suggestedDuration:30,basePoints:10,taskOrder:1};
-export function WeeklyPlanPage({studentId}:{studentId:number}){const[weekStart,setWeekStart]=useState(defaultPlanningWeek),[tasks,setTasks]=useState<WeeklyTask[]>([]),[editing,setEditing]=useState<WeeklyTask|null>(null),[form,setForm]=useState<TaskForm>(initial),[modal,setModal]=useState(false),[error,setError]=useState('');const days=daysOfWeek(weekStart),requestVersion=useRef(0);
- async function load(){try{const result=await api<{tasks:WeeklyTask[]}>(`/api/students/${studentId}/weekly-tasks?weekStart=${weekStart}`);setTasks(result.tasks)}catch(reason){setError(reason instanceof Error?reason.message:'读取失败')}}useEffect(()=>{void load()},[studentId,weekStart]);
- function changeWeek(offset:number){const date=new Date(`${weekStart}T12:00:00`);date.setDate(date.getDate()+offset*7);setWeekStart(isoDate(date))}function openCreate(weekday:number){setEditing(null);setForm({...initial,weekday,taskOrder:tasks.filter(t=>t.weekday===weekday).length+1});setError('');setModal(true)}function openEdit(task:WeeklyTask){setEditing(task);setForm({weekday:task.weekday,subject:task.subject,content:task.content,completionStandard:task.completionStandard,suggestedDuration:task.suggestedDuration,basePoints:task.basePoints,taskOrder:task.taskOrder});setError('');setModal(true)}
- async function save(event:React.FormEvent){event.preventDefault();try{await api(editing?`/api/students/${studentId}/weekly-tasks/${editing.id}`:`/api/students/${studentId}/weekly-tasks`,{method:editing?'PUT':'POST',body:JSON.stringify({...form,weekStart})});setModal(false);await load()}catch(reason){setError(reason instanceof Error?reason.message:'保存失败')}}async function remove(task:WeeklyTask){if(!confirm(`删除“${task.content}”？`))return;await api(`/api/students/${studentId}/weekly-tasks/${task.id}`,{method:'DELETE'});await load()}
- return <><div className="page-heading"><div><span className="eyebrow">Weekly Plan</span><h1>周计划</h1><p>按科目拆解一周任务，为每天准备清晰、可衡量的执行内容。</p></div><div className="week-controls"><button className="icon-button" onClick={()=>changeWeek(-1)} title="上一周"><ChevronLeft size={18}/></button><label>本周开始<input type="date" value={weekStart} onChange={e=>setWeekStart(mondayOf(e.target.value))}/></label><button className="icon-button" onClick={()=>changeWeek(1)} title="下一周"><ChevronRight size={18}/></button></div></div>{error&&<p className="error">{error}</p>}<div className="week-list">{days.map(day=>{const dayTasks=tasks.filter(task=>task.weekday===day.weekday);return <section className="day-section" key={day.date}><header><div><strong>{day.label}</strong><span>{day.short}</span></div><small>{dayTasks.length}项 · {dayTasks.reduce((sum,t)=>sum+t.suggestedDuration,0)}分钟</small><button className="icon-button" title={`添加${day.label}任务`} onClick={()=>openCreate(day.weekday)}><CirclePlus size={18}/></button></header><div className="day-tasks">{dayTasks.length?dayTasks.map(task=><article className={`plan-task subject-${task.subject}`} key={task.id}><span className="subject-badge">{subjectLabel(task.subject)}</span><div className="task-copy"><h3>{task.content}</h3><p>{task.completionStandard}</p><div className="task-meta"><span><Clock3 size={14}/>{task.suggestedDuration}分钟</span><span>{task.basePoints}积分</span><span>顺序 {task.taskOrder}</span></div></div><div className="task-actions"><button title="编辑任务" onClick={()=>openEdit(task)}><Pencil size={16}/></button><button title="删除任务" onClick={()=>void remove(task)}><Trash2 size={16}/></button></div></article>):<button className="add-empty" onClick={()=>openCreate(day.weekday)}><CirclePlus size={17}/>添加学习任务</button>}</div></section>})}</div>{modal&&<div className="backdrop"><div className="modal task-modal" role="dialog" aria-modal="true" aria-labelledby="task-dialog"><div className="modal-head"><div><span className="eyebrow">Study Task</span><h2 id="task-dialog">{editing?'编辑学习任务':'新增学习任务'}</h2></div><button className="icon-button" onClick={()=>setModal(false)} title="关闭"><X size={20}/></button></div><form onSubmit={save}><div className="form-row"><label>星期<select value={form.weekday} onChange={e=>setForm({...form,weekday:Number(e.target.value)})}>{days.map(day=><option key={day.weekday} value={day.weekday}>{day.label}</option>)}</select></label><label>科目<select value={form.subject} onChange={e=>setForm({...form,subject:e.target.value as Subject})}>{subjects.map(subject=><option key={subject.id} value={subject.id}>{subject.label}</option>)}</select></label></div><label>学习内容<input required value={form.content} onChange={e=>setForm({...form,content:e.target.value})} placeholder="例如：复习当天数学错题并订正"/></label><label>衡量标准<textarea required rows={3} value={form.completionStandard} onChange={e=>setForm({...form,completionStandard:e.target.value})} placeholder="例如：完成10题，正确率达到80%，错题完成订正"/></label><div className="form-row three"><label>建议时长（分钟）<input type="number" min="1" value={form.suggestedDuration} onChange={e=>setForm({...form,suggestedDuration:Number(e.target.value)})}/></label><label>基础积分<input type="number" min="0" value={form.basePoints} onChange={e=>setForm({...form,basePoints:Number(e.target.value)})}/></label><label>执行顺序<input type="number" min="1" value={form.taskOrder} onChange={e=>setForm({...form,taskOrder:Number(e.target.value)})}/></label></div>{error&&<p className="form-error">{error}</p>}<div className="modal-actions"><button type="button" className="secondary" onClick={()=>setModal(false)}>取消</button><button className="primary" type="submit">保存任务</button></div></form></div></div>}</>}
+function todayWeekday(){
+ const day=new Date().getDay();
+ return day===0?7:day;
+}
 
+export function WeeklyPlanPage({student}:{student:Student}){
+ const studentId=student.id;
+ const{subjects:subjectOptions,label:subjectLabel}=useSubjectCatalog();
+ const[weekStart,setWeekStart]=useState(defaultPlanningWeek);
+ const[activeWeekday,setActiveWeekday]=useState(todayWeekday);
+ const[tasks,setTasks]=useState<WeeklyTask[]>([]);
+ const[subjectFilter,setSubjectFilter]=useState<Subject|'all'>('all');
+ const[error,setError]=useState('');
+ const days=daysOfWeek(weekStart);
+ const activeDay=useMemo(()=>days.find(day=>day.weekday===activeWeekday)??days[0],[days,activeWeekday]);
+ const semester=useMemo(()=>semesterWeekInfo(student.semesterStart,student.semesterEnd,weekStart),[student.semesterStart,student.semesterEnd,weekStart]);
+ const requestVersion=useRef(0);
 
+ async function load(){
+  const version=++requestVersion.current;
+  try{
+   const result=await api<{tasks:WeeklyTask[]}>(`/api/students/${studentId}/weekly-tasks?weekStart=${weekStart}`);
+   if(version!==requestVersion.current)return;
+   setTasks(result.tasks);
+   setError('');
+  }catch(reason){setError(reason instanceof Error?reason.message:'读取失败')}
+ }
 
+ useEffect(()=>{
+  setWeekStart(defaultPlanningWeek());
+  setActiveWeekday(todayWeekday());
+ },[studentId]);
+ useEffect(()=>{void load()},[studentId,weekStart]);
+ useEffect(()=>{if(!days.some(day=>day.weekday===activeWeekday))setActiveWeekday(days[0]?.weekday??1)},[days,activeWeekday]);
+ useEffect(()=>{if(subjectFilter!=='all'&&!subjectOptions.some(item=>item.id===subjectFilter))setSubjectFilter('all')},[subjectOptions,subjectFilter]);
+
+ function changeWeek(offset:number){
+  const date=new Date(`${weekStart}T12:00:00`);
+  date.setDate(date.getDate()+offset*7);
+  setWeekStart(isoDate(date));
+ }
+
+ return <div className="week-plan-page">
+  <aside className="week-day-rail">
+   <div className="week-rail-controls">
+    <div className="week-rail-switcher">
+     <button aria-label="上一周" className="icon-button" onClick={()=>changeWeek(-1)} title="上一周" type="button"><ChevronLeft size={18}/></button>
+     <div className={`week-rail-week ${semester?semester.inRange?'':'out':'muted'}`} title={student.semesterStart&&student.semesterEnd?`学期 ${student.semesterStart} 至 ${student.semesterEnd}`:'请到设置页配置学期时间'}>
+      {semester
+       ?semester.inRange?<><strong>{chineseWeekLabel(semester.weekNumber)}</strong><span>共 {semester.totalWeeks} 周</span></>:<><strong>学期外</strong><span>共 {semester.totalWeeks} 周</span></>
+       :<><strong>{!student.semesterStart&&!student.semesterEnd?'未设置学期':!student.semesterStart?'缺开始日期':'缺结束日期'}</strong><span>请到设置保存</span></>}
+     </div>
+     <button aria-label="下一周" className="icon-button" onClick={()=>changeWeek(1)} title="下一周" type="button"><ChevronRight size={18}/></button>
+    </div>
+   </div>
+   <div className="week-day-tabs week-day-tabs-rail" role="tablist" aria-label="本周日期">
+    {days.map(day=>{
+     const dayItems=tasks.filter(task=>task.weekday===day.weekday);
+     const count=dayItems.length;
+     const planned=dayItems.reduce((sum,task)=>sum+task.suggestedDuration,0);
+     const isToday=day.date===isoDate();
+     return <button aria-selected={day.weekday===activeDay.weekday} className={[day.weekday===activeDay.weekday?'active':'',isToday?'is-today':''].filter(Boolean).join(' ')} key={day.date} onClick={()=>setActiveWeekday(day.weekday)} role="tab" type="button">
+      {isToday&&<em className="today-badge">今天</em>}
+      <strong>{day.label}</strong>
+      <span>{count?`${count} 项 · ${planned} 分钟`:'暂无任务'}</span>
+     </button>;
+    })}
+   </div>
+  </aside>
+
+  <div className="week-plan-body">
+   {error&&<p className="error">{error}</p>}
+   <DayTaskWorkspace
+    addAriaLabel={`添加${activeDay.label}任务`}
+    days={days}
+    emptyHint="这一天还没有任务，点击右上角添加，或到学习规划生成整周计划。"
+    onReload={load}
+    onSubjectFilterChange={setSubjectFilter}
+    setTasks={setTasks}
+    studentId={studentId}
+    subjectFilter={subjectFilter}
+    subjectLabel={subjectLabel}
+    subjectOptions={subjectOptions}
+    tasks={tasks}
+    title={<strong className="week-day-label">{activeDay.label}积分挑战<span className="week-day-date">{activeDay.short}</span></strong>}
+    weekday={activeDay.weekday}
+    weekStart={weekStart}
+   />
+  </div>
+ </div>;
+}

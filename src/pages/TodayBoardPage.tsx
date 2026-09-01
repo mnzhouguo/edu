@@ -1,22 +1,109 @@
 import { useEffect,useMemo,useRef,useState } from 'react';
-import { ArrowDown,ArrowUp,Clock3,GripVertical,X } from 'lucide-react';
 import { api } from '../api';
-import { isoDate } from '../dates';
-import { accuracyBands,behaviorTags,completions,statusLabel,subjectLabel,subjects,type DailyTask,type Subject } from '../types';
+import { DayTaskWorkspace } from '../components/DayTaskWorkspace';
+import { daysOfWeek,isoDate,mondayOf } from '../dates';
+import { useSubjectCatalog } from '../subject-catalog';
+import { type Subject,type WeeklyTask } from '../types';
 
-export function TodayBoardPage({studentId}:{studentId:number}){
- const[date,setDate]=useState(isoDate()),[tasks,setTasks]=useState<DailyTask[]>([]),[filter,setFilter]=useState<Subject|'all'>('all'),[dragged,setDragged]=useState<number|null>(null),[error,setError]=useState(''),[submitTask,setSubmitTask]=useState<DailyTask|null>(null),[evalTask,setEvalTask]=useState<DailyTask|null>(null),[note,setNote]=useState(''),[files,setFiles]=useState<FileList|null>(null),[completion,setCompletion]=useState('completed'),[accuracyBand,setAccuracyBand]=useState('unrecorded'),[tags,setTags]=useState<string[]>([]),[evalNote,setEvalNote]=useState(''),[confirmEval,setConfirmEval]=useState(true),[balance,setBalance]=useState(0),[todayEarned,setTodayEarned]=useState(0);
- const visible=useMemo(()=>filter==='all'?tasks:tasks.filter(task=>task.subject===filter),[tasks,filter]);
+function weekdayOf(value:string){
+ const date=new Date(`${value}T12:00:00`);
+ return date.getDay()||7;
+}
+
+function weekdayLabel(value:string){
+ return ['周日','周一','周二','周三','周四','周五','周六'][new Date(`${value}T12:00:00`).getDay()];
+}
+
+function subjectProgress(tasks:WeeklyTask[]){
+ const total=tasks.length;
+ const completed=tasks.filter(task=>task.executionStatus==='completed').length;
+ return {total,completed,rate:total?completed/total:0};
+}
+
+function SubjectFilterCard({
+ label,active,onClick,tasks,
+}:{label:string;active:boolean;onClick:()=>void;tasks:WeeklyTask[]}){
+ const progress=subjectProgress(tasks);
+ const percent=Math.round(progress.rate*100);
+ const allDone=progress.total>0&&progress.completed===progress.total;
+ return <button
+  className={['today-subject-card',active?'active':'',allDone?'is-done':''].filter(Boolean).join(' ')}
+  onClick={onClick}
+  type="button"
+ >
+  <span className="today-subject-top">
+   <strong>{label}</strong>
+   <em>{progress.completed}/{progress.total} 项</em>
+  </span>
+  <span className="today-subject-percent">{percent}%</span>
+  <span className="today-subject-bar" aria-label={`${label}完成 ${percent}%`}><i style={{width:`${percent}%`}}/></span>
+ </button>;
+}
+
+export function TodayBoardPage({studentId,onOpenWeeklyPlan}:{studentId:number;onOpenWeeklyPlan?:()=>void}){
+ const{subjects,label:subjectLabel}=useSubjectCatalog();
+ const date=isoDate();
+ const[tasks,setTasks]=useState<WeeklyTask[]>([]);
+ const[filter,setFilter]=useState<Subject|'all'>('all');
+ const[error,setError]=useState('');
+ const weekStart=mondayOf(date);
+ const weekday=weekdayOf(date);
+ const days=useMemo(()=>daysOfWeek(weekStart),[weekStart]);
+ const dayTasks=useMemo(()=>tasks.filter(task=>task.weekday===weekday),[tasks,weekday]);
+ const subjectsWithTasks=useMemo(()=>subjects.filter(subject=>dayTasks.some(task=>task.subject===subject.id)),[subjects,dayTasks]);
  const requestVersion=useRef(0);
- async function load(){const version=++requestVersion.current;try{const result=await api<{tasks:DailyTask[]}>(`/api/students/${studentId}/daily-plan/generate`,{method:'POST',body:JSON.stringify({date})});const dash=await api<{dashboard:{pointsBalance:number;todayEarned:number}}>(`/api/students/${studentId}/dashboard?date=${date}`);if(version===requestVersion.current){setTasks(result.tasks);setBalance(dash.dashboard.pointsBalance);setTodayEarned(dash.dashboard.todayEarned)}}catch(reason){setError(reason instanceof Error?reason.message:'读取失败')}}
- useEffect(()=>{void load()},[studentId,date]);
- async function persist(next:DailyTask[]){const version=++requestVersion.current;setTasks(next);try{const result=await api<{tasks:DailyTask[]}>('/api/daily-tasks/order',{method:'PUT',body:JSON.stringify({studentId,date,orderedIds:next.map(task=>task.id)})});if(version===requestVersion.current)setTasks(result.tasks)}catch(reason){setError(reason instanceof Error?reason.message:'排序保存失败');await load()}}
- function reorderVisible(fromId:number,toId:number){if(fromId===toId)return;const ids=visible.map(task=>task.id),from=ids.indexOf(fromId),to=ids.indexOf(toId);if(from<0||to<0)return;ids.splice(to,0,...ids.splice(from,1));const reordered=ids.map(id=>tasks.find(item=>item.id===id)!);let cursor=0;const next=tasks.map(task=>filter==='all'||task.subject===filter?reordered[cursor++]:task);void persist(next)}
- function move(id:number,offset:number){const index=visible.findIndex(task=>task.id===id),target=visible[index+offset];if(target)reorderVisible(id,target.id)}
- async function submit(event:React.FormEvent){event.preventDefault();if(!submitTask)return;const data=new FormData();data.set('note',note);if(files)for(const file of files)data.append('photos',file);try{await api(`/api/students/${studentId}/daily-tasks/${submitTask.id}/submit`,{method:'POST',body:data});setSubmitTask(null);setNote('');setFiles(null);await load()}catch(reason){setError(reason instanceof Error?reason.message:'提交失败')}}
- async function evaluate(event:React.FormEvent){event.preventDefault();if(!evalTask)return;try{await api(`/api/students/${studentId}/daily-tasks/${evalTask.id}/evaluations`,{method:'POST',body:JSON.stringify({completion,accuracyBand,tags,note:evalNote,confirm:confirmEval})});setEvalTask(null);await load()}catch(reason){setError(reason instanceof Error?reason.message:'评价失败')}}
- function openEval(task:DailyTask){setEvalTask(task);setCompletion(task.evaluation?.completion??'completed');setAccuracyBand(task.evaluation?.accuracyBand??'unrecorded');setTags(task.evaluation?.tags??[]);setEvalNote(task.evaluation?.note??'');setConfirmEval(true);setError('')}
- return <><div className="page-heading"><div><span className="eyebrow">Today's Board</span><h1>今日看板</h1><p>孩子提交后进入待评价；家长确认 Evaluation 后才计入 Points Balance。</p></div><div className="heading-meta"><span className="balance-chip">今日得分 {todayEarned} · 积分余额 {balance}</span><label className="date-control">执行日期<input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label></div></div>{error&&<p className="error">{error}</p>}<div className="board-layout"><aside className="subject-filter"><strong>科目筛选</strong><button className={filter==='all'?'selected':''} onClick={()=>setFilter('all')}><span className="subject-dot all"/>全部任务 <em>{tasks.length}</em></button>{subjects.map(subject=><button className={filter===subject.id?'selected':''} key={subject.id} onClick={()=>setFilter(subject.id)}><span className={`subject-dot ${subject.id}`}/>{subject.label}<em>{tasks.filter(task=>task.subject===subject.id).length}</em></button>)}</aside><section className="board-main"><div className="board-summary"><div><strong>{visible.length}</strong><span>当前任务</span></div><div><strong>{visible.reduce((sum,t)=>sum+t.suggestedDuration,0)}</strong><span>计划分钟</span></div><div><strong>{visible.reduce((sum,t)=>sum+(t.earnedPoints??t.estimatedPoints),0)}</strong><span>{visible.some(task=>task.earnedPoints!==null)?'已得积分':'预计积分'}</span></div></div><div className="execution-list">{visible.length?visible.map((task,index)=><article draggable className={`execution-task subject-${task.subject}`} key={task.id} onDragStart={()=>setDragged(task.id)} onDragOver={e=>e.preventDefault()} onDrop={()=>{if(dragged)reorderVisible(dragged,task.id);setDragged(null)}}><GripVertical className="drag-handle" size={20}/><span className="order-number">{String(index+1).padStart(2,'0')}</span><div className="task-copy"><span className="subject-badge">{subjectLabel(task.subject)}</span><h3>{task.content}</h3><p>{task.completionStandard}</p><div className="task-meta"><span><Clock3 size={14}/>{task.suggestedDuration}分钟</span><span>{task.earnedPoints??task.estimatedPoints}积分</span><span>{statusLabel(task.status)}</span></div>{task.submission&&<p className="task-note">提交备注：{task.submission.note||'无'}{task.submission.photos.map(photo=><img alt={photo.originalFilename} key={photo.id} src={`/api/students/${studentId}/photos/${photo.id}`}/>)}</p>}</div><div className="order-actions"><button disabled={index===0} onClick={()=>move(task.id,-1)} title="上移"><ArrowUp size={16}/></button><button disabled={index===visible.length-1} onClick={()=>move(task.id,1)} title="下移"><ArrowDown size={16}/></button>{task.status==='planned'&&<button className="text-button" onClick={()=>{setSubmitTask(task);setNote('');setFiles(null)}}>提交</button>}{task.status!=='planned'&&<button className="text-button" onClick={()=>openEval(task)}>评价</button>}</div></article>):<div className="empty-board"><h2>今天还没有任务</h2><p>请先在周计划中为这一天添加任务，系统会自动生成今日清单。</p></div>}</div></section></div>
- {submitTask&&<div className="backdrop"><form className="modal" onSubmit={submit}><div className="modal-head"><div><span className="eyebrow">Student Submission</span><h2>提交学习任务</h2></div><button className="icon-button" onClick={()=>setSubmitTask(null)} title="关闭" type="button"><X size={20}/></button></div><p>预计积分 {submitTask.estimatedPoints}，提交后不会改变积分余额。</p><label>备注<textarea value={note} onChange={e=>setNote(e.target.value)} rows={3}/></label><label>学习照片<input accept="image/jpeg,image/png,image/webp,image/gif" multiple onChange={e=>setFiles(e.target.files)} type="file"/></label><div className="modal-actions"><button className="secondary" onClick={()=>setSubmitTask(null)} type="button">取消</button><button className="primary" type="submit">标记已提交</button></div></form></div>}
- {evalTask&&<div className="backdrop"><form className="modal task-modal" onSubmit={evaluate}><div className="modal-head"><div><span className="eyebrow">Evaluation</span><h2>家长评价</h2></div><button className="icon-button" onClick={()=>setEvalTask(null)} title="关闭" type="button"><X size={20}/></button></div><div className="form-row"><label>完成结果<select value={completion} onChange={e=>setCompletion(e.target.value)}>{completions.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label>正确率档位<select value={accuracyBand} onChange={e=>setAccuracyBand(e.target.value)}>{accuracyBands.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label></div><fieldset className="tag-set"><legend>附加表现</legend>{behaviorTags.map(tag=><label key={tag.id}><input checked={tags.includes(tag.id)} onChange={()=>setTags(current=>current.includes(tag.id)?current.filter(id=>id!==tag.id):[...current,tag.id])} type="checkbox"/>{tag.label}</label>)}</fieldset><label>备注<textarea onChange={e=>setEvalNote(e.target.value)} rows={3} value={evalNote}/></label><label className="check-inline"><input checked={confirmEval} onChange={e=>setConfirmEval(e.target.checked)} type="checkbox"/>确认后写入正式积分</label><div className="modal-actions"><button className="secondary" onClick={()=>setEvalTask(null)} type="button">取消</button><button className="primary" type="submit">{confirmEval?'确认评价':'保存草稿'}</button></div></form></div>}</>
+
+ async function load(){
+  const version=++requestVersion.current;
+  try{
+   const taskResult=await api<{tasks:WeeklyTask[]}>(`/api/students/${studentId}/weekly-tasks?weekStart=${weekStart}`);
+   if(version!==requestVersion.current)return;
+   setTasks(taskResult.tasks);
+   setError('');
+  }catch(reason){setError(reason instanceof Error?reason.message:'读取失败')}
+ }
+
+ useEffect(()=>{setFilter('all');void load()},[studentId]);
+ useEffect(()=>{if(filter!=='all'&&!dayTasks.some(task=>task.subject===filter))setFilter('all')},[dayTasks,filter]);
+
+ return <div className="today-board-page">
+  <aside className="subject-rail today-subject-rail">
+   <div className="subject-rail-title">科目进度</div>
+   <div className="subject-rail-list today-subject-list">
+    <SubjectFilterCard active={filter==='all'} label="全部任务" onClick={()=>setFilter('all')} tasks={dayTasks}/>
+    {subjectsWithTasks.map(subject=>{
+     const subjectTasks=dayTasks.filter(task=>task.subject===subject.id);
+     return <SubjectFilterCard
+      active={filter===subject.id}
+      key={subject.id}
+      label={subject.label}
+      onClick={()=>setFilter(subject.id)}
+      tasks={subjectTasks}
+     />;
+    })}
+   </div>
+  </aside>
+
+  <div className="today-board-body">
+   {error&&<p className="error">{error}</p>}
+   <DayTaskWorkspace
+    addAriaLabel={`添加${weekdayLabel(date)}任务`}
+    days={days}
+    emptyHint={<>今天还没有任务，点击右上角添加{onOpenWeeklyPlan?<>，或<button className="text-button" onClick={onOpenWeeklyPlan} type="button">去每周计划</button></>:null}。</>}
+    lockWeekday
+    onReload={load}
+    onSubjectFilterChange={setFilter}
+    setTasks={setTasks}
+    showSubjectFilter={false}
+    studentId={studentId}
+    subjectFilter={filter}
+    subjectLabel={subjectLabel}
+    subjectOptions={subjects}
+    tasks={tasks}
+    title={<strong className="week-day-label">任务清单</strong>}
+    weekday={weekday}
+    weekStart={weekStart}
+   />
+  </div>
+ </div>;
 }

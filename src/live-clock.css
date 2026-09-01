@@ -1,0 +1,26 @@
+.topbar-end{display:flex;align-items:center;justify-content:flex-end;gap:14px}
+.live-clock{display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:5px 8px 5px 14px;border:1px solid #d5e4df;border-radius:999px;background:linear-gradient(180deg,#f8fcfa 0%,#eef6f3 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 6px 16px rgba(23,51,45,.06)}
+.live-clock-date{display:grid;gap:1px;min-width:7.5rem;text-align:right}
+.live-clock-date strong{color:#17332d;font-size:13px;font-weight:800;letter-spacing:.01em;line-height:1.2}
+.live-clock-date span{color:#6a7c75;font-size:11px;font-weight:700;letter-spacing:.08em}
+.live-clock-time{display:flex;align-items:center;height:36px;padding:0 10px 0 4px;font-variant-numeric:tabular-nums;font-size:22px;font-weight:800;color:#17685d;line-height:1;letter-spacing:.02em}
+.live-clock-time i{display:block;width:.42em;color:#3f7d72;font-style:normal;text-align:center;opacity:.7}
+.live-clock-digit{position:relative;display:inline-block;width:.68em;height:1.05em;overflow:hidden;vertical-align:top}
+.live-clock-reel{display:flex;flex-direction:column;will-change:transform}
+.live-clock-reel b{display:flex;align-items:center;justify-content:center;height:1.05em;font-weight:800}
+.live-clock-reel.is-rolling{transform:translateY(-50%);transition:transform .44s cubic-bezier(.18,.86,.24,1)}
+.live-clock-seconds{display:inline-flex;margin-left:1px;padding:3px 6px;border-radius:8px;background:#17685d;color:#e8f4f0;box-shadow:0 4px 10px rgba(23,104,93,.22)}
+.live-clock-seconds .live-clock-reel b{color:#f4fbf8}
+@media(prefers-reduced-motion:reduce){
+ .live-clock-reel.is-rolling{transform:none;transition:none}
+}
+@media(max-width:850px){
+ .live-clock{gap:10px;padding:4px 6px 4px 12px}
+ .live-clock-time{font-size:19px}
+}
+@media(max-width:580px){
+ .live-clock{padding:3px 4px 3px 0;border:0;background:none;box-shadow:none;gap:0}
+ .live-clock-date{display:none}
+ .live-clock-time{height:30px;padding:0;font-size:17px}
+ .live-clock-seconds{padding:2px 5px}
+}

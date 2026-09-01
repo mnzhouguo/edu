@@ -2,13 +2,17 @@
   "name": "edu",
   "version": "1.0.0",
   "description": "Local learning progress and reward manager for families",
-  "main": "index.js",
+  "main": "out/desktop/main.js",
   "scripts": {
     "dev": "concurrently -k -n API,WEB -c blue,green \"npm:dev:api\" \"npm:dev:web\"",
     "dev:api": "tsx watch server/index.ts",
     "dev:web": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
+    "build:web": "vite build",
+    "build:desktop": "tsc -p tsconfig.desktop.json",
     "start": "tsx server/index.ts",
+    "desktop": "node node_modules/electron/install.js && npm run build:web && npm run build:desktop && electron .",
+    "dist:win": "node node_modules/electron/install.js && npm run build:web && npm run build:desktop && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/ electron-builder --win nsis --publish never",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -20,7 +24,7 @@
     "url": "git+https://github.com/mnzhouguo/edu.git"
   },
   "keywords": [],
-  "author": "",
+  "author": "成长计划",
   "license": "ISC",
   "type": "module",
   "bugs": {
@@ -29,10 +33,7 @@
   "homepage": "https://github.com/mnzhouguo/edu#readme",
   "dependencies": {
     "express": "^5.2.1",
-    "lucide-react": "^1.37.0",
-    "multer": "^2.3.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "multer": "^2.3.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -45,9 +46,14 @@
     "@vitejs/plugin-react": "^6.1.1",
     "concurrently": "^10.0.5",
     "cross-env": "^10.1.0",
+    "electron": "^44.0.0",
+    "electron-builder": "^26.0.12",
     "eslint": "^10.9.1",
     "globals": "^17.11.0",
+    "lucide-react": "^1.37.0",
     "playwright": "^1.62.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "supertest": "^7.2.2",
     "tsx": "^4.23.13",
     "typescript": "^6.0.3",

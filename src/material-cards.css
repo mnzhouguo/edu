@@ -1,0 +1,15 @@
+.plan-section{margin-bottom:0}.plan-section-toolbar{display:flex;align-items:center;gap:12px;padding:0 10px 0 8px;border-bottom:1px solid #e3e8eb}.plan-section-toolbar .subject-tabs{flex:1;margin:0;border-bottom:0}.plan-section-toolbar .subject-tabs button{display:inline-flex;align-items:center;gap:8px}.plan-section-toolbar .panel-head-actions{min-width:0}.plan-section-toolbar .panel-hint{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.plan-tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#eef3f1;color:#5d716b;font-size:11px;font-weight:800}.plan-section-toolbar .subject-tabs button.active .plan-tab-count,.plan-section-toolbar .subject-tabs button[aria-selected=true] .plan-tab-count{background:#e8f4f1;color:#17685d}
+.material-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;padding:16px 18px 18px}
+.material-card{position:relative;display:flex;flex-direction:column;background:#f7faf8;border:1px solid #dce6e2;border-radius:8px;padding:14px 16px;cursor:pointer;transition:border-color .15s ease,transform .15s ease,box-shadow .15s ease}
+.material-card:hover{border-color:#b7d0c8;transform:translateY(-1px);box-shadow:0 8px 18px rgba(23,52,47,.08)}
+.material-card-body{min-width:0;padding-right:4px}
+.material-card-body h3{margin:0;font-size:15px;line-height:1.4;color:#17332d;padding-right:56px}
+.material-card-body p{margin:8px 0 0;font-size:13px;line-height:1.55;color:#6a7c75}
+.material-card-actions{position:absolute;top:8px;right:8px;z-index:1;display:flex;gap:4px;opacity:0;transform:translateY(-3px);pointer-events:none;transition:opacity .16s ease,transform .16s ease}
+.material-card-actions .icon-button{width:26px;height:26px;background:#fff}
+.material-card-actions .icon-button svg{width:14px;height:14px}
+.material-card:hover .material-card-actions,.material-card:focus-within .material-card-actions{opacity:1;transform:translateY(0);pointer-events:auto}
+.material-card-empty{width:calc(100% - 36px);margin:0 18px 18px;padding:28px 16px;border:1px dashed #c9d7d2;border-radius:8px;background:#fbfcfc;color:#17685d;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px}
+.material-card-empty:hover,.list-empty-action:hover{border-color:#2b8175;background:#eaf4f1}
+.plan-items-table .empty-cell{height:auto;padding:12px 14px!important;border:0}
+.list-empty-action{width:100%;min-height:72px;border:1px dashed #c9d7d2;border-radius:8px;background:#fbfcfc;color:#17685d;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700;font-size:13px}

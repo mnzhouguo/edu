@@ -1,3 +1,5 @@
+import { getStudent,setStudentAvatarPath,studentAvatarPath } from './db.js';
+import { getReward,rewardImagePath,setRewardImagePath } from './rewards.js';
 import { randomBytes } from 'node:crypto';
 import { existsSync,mkdirSync,readFileSync,unlinkSync,writeFileSync } from 'node:fs';
 import { join,resolve } from 'node:path';
@@ -44,3 +46,34 @@ export function insertPhoto(db:DatabaseSync,studentId:number,ownerType:'submissi
 
 export function getPhoto(db:DatabaseSync,id:number,studentId?:number){const row=studentId===undefined?db.prepare('SELECT * FROM photos WHERE id=?').get(id):db.prepare('SELECT * FROM photos WHERE id=? AND student_id=?').get(id,studentId);return row?mapPhoto(row as Record<string,unknown>):null}
 export function listPhotos(db:DatabaseSync,ownerType:'submission'|'mistake',ownerId:number){return db.prepare('SELECT * FROM photos WHERE owner_type=? AND owner_id=? ORDER BY id').all(ownerType,ownerId).map(row=>mapPhoto(row as Record<string,unknown>))}
+
+export function mediaTypeForPath(relativePath:string){
+ const lower=relativePath.toLowerCase();
+ if(lower.endsWith('.jpg')||lower.endsWith('.jpeg'))return 'image/jpeg';
+ if(lower.endsWith('.png'))return 'image/png';
+ if(lower.endsWith('.webp'))return 'image/webp';
+ if(lower.endsWith('.gif'))return 'image/gif';
+ return 'application/octet-stream';
+}
+
+export function replaceStudentAvatar(db:DatabaseSync,library:string,studentId:number,file:UploadedFile,maxBytes:number){
+ if(!getStudent(db,studentId))return {status:'not_found' as const};
+ const message=validatePhoto(file,maxBytes);
+ if(message)return {status:'invalid' as const,message};
+ const previous=studentAvatarPath(db,studentId);
+ const stored=writePhoto(library,file);
+ const student=setStudentAvatarPath(db,studentId,stored.relativePath);
+ if(previous)removeWritten(library,[previous]);
+ return {status:'ok' as const,student:student!};
+}
+
+export function replaceRewardImage(db:DatabaseSync,library:string,rewardId:number,file:UploadedFile,maxBytes:number){
+ if(!getReward(db,rewardId))return {status:'not_found' as const};
+ const message=validatePhoto(file,maxBytes);
+ if(message)return {status:'invalid' as const,message};
+ const previous=rewardImagePath(db,rewardId);
+ const stored=writePhoto(library,file);
+ const reward=setRewardImagePath(db,rewardId,stored.relativePath);
+ if(previous)removeWritten(library,[previous]);
+ return {status:'ok' as const,reward:reward!};
+}
